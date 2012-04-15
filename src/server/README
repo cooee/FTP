@@ -1,2 +1,1 @@
-Compile:
-	./build.sh
+A simple ftp pkg like http pkg.
