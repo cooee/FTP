@@ -16,3 +16,10 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h
 
 FORMS    += mainwindow.ui
+
+RESOURCES += \
+    ftp.qrc
+
+OTHER_FILES += \
+    images/dir.png \
+    images/file.png
