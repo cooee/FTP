@@ -31,6 +31,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     void actionConnect();
+    void initView();
 };
 
 #endif // MAINWINDOW_H
