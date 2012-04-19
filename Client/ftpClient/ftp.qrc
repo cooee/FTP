@@ -2,5 +2,15 @@
     <qresource prefix="/">
         <file>images/dir.png</file>
         <file>images/file.png</file>
+        <file>images/button-cross.png</file>
+        <file>images/button-pause.png</file>
+        <file>images/button-play.png</file>
+        <file>images/button-shuffle.png</file>
+        <file>images/button-synchronize.png</file>
+        <file>images/gear.png</file>
+        <file>images/inbox.png</file>
+        <file>images/outbox.png</file>
+        <file>images/question.png</file>
+        <file>images/star.png</file>
     </qresource>
 </RCC>

@@ -36,6 +36,7 @@ MainWindow::~MainWindow()
 }
 void MainWindow::actionConnect()
  {
+//    ui->mSiteManager->setFlat(true);
 
        ui->actionOpen->setShortcut(QKeySequence("Ctrl+o"));
        ui->actionOpen->setStatusTip("open a file");//设置状态栏...
