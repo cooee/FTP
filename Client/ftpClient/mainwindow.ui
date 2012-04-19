@@ -384,20 +384,13 @@
        <widget class="QWidget" name="horizontalLayoutWidget_2">
         <property name="geometry">
          <rect>
-          <x>0</x>
+          <x>50</x>
           <y>0</y>
-          <width>511</width>
-          <height>31</height>
+          <width>461</width>
+          <height>51</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_6">
-         <item>
-          <widget class="QLabel" name="label_5">
-           <property name="text">
-            <string>目录</string>
-           </property>
-          </widget>
-         </item>
          <item>
           <widget class="QLineEdit" name="mDir"/>
          </item>
@@ -422,20 +415,13 @@
         <widget class="QWidget" name="horizontalLayoutWidget_8">
          <property name="geometry">
           <rect>
-           <x>0</x>
+           <x>50</x>
            <y>0</y>
-           <width>511</width>
-           <height>31</height>
+           <width>461</width>
+           <height>51</height>
           </rect>
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_11">
-          <item>
-           <widget class="QLabel" name="label_7">
-            <property name="text">
-             <string>目录</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <widget class="QLineEdit" name="mWebDir"/>
           </item>
@@ -445,9 +431,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>30</y>
+           <y>50</y>
            <width>511</width>
-           <height>281</height>
+           <height>261</height>
           </rect>
          </property>
          <column>
@@ -455,6 +441,22 @@
            <string notr="true">1</string>
           </property>
          </column>
+        </widget>
+        <widget class="QLabel" name="label_7">
+         <property name="geometry">
+          <rect>
+           <x>-10</x>
+           <y>0</y>
+           <width>61</width>
+           <height>51</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="pixmap">
+          <pixmap resource="ftp.qrc">:/images/web.png</pixmap>
+         </property>
         </widget>
        </widget>
        <widget class="QTreeWidget" name="mDetailed">
@@ -486,10 +488,32 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>30</y>
+          <y>50</y>
           <width>511</width>
-          <height>281</height>
+          <height>261</height>
          </rect>
+        </property>
+       </widget>
+       <widget class="QLabel" name="label_5">
+        <property name="geometry">
+         <rect>
+          <x>-10</x>
+          <y>-10</y>
+          <width>61</width>
+          <height>61</height>
+         </rect>
+        </property>
+        <property name="baseSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="pixmap">
+         <pixmap resource="ftp.qrc">:/images/folder.png</pixmap>
         </property>
        </widget>
       </widget>

@@ -85,7 +85,7 @@ void MainWindow::initView()
     ui->mWebFileList->setHeaderLabels(QStringList() << tr("Name") << tr("Size") << tr("Owner") << tr("Group") << tr("Time"));
     ui->mWebFileList->header()->setStretchLastSection(false);
 
-        ui->mDetailed->setRootIsDecorated(false);
+    ui->mDetailed->setRootIsDecorated(false);
     ui->mDetailed->setHeaderLabels(QStringList() << tr("源文件") << tr("大小") << tr("日期") << tr("目标") << tr("进度"));
     ui->mDetailed->header()->setStretchLastSection(false);
 

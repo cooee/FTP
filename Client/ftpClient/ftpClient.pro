@@ -23,8 +23,6 @@ RESOURCES += \
     ftp.qrc
 
 OTHER_FILES += \
-    images/dir.png \
-    images/file.png \
     images/star.png \
     images/question.png \
     images/outbox.png \
@@ -34,4 +32,6 @@ OTHER_FILES += \
     images/button-shuffle.png \
     images/button-play.png \
     images/button-pause.png \
-    images/button-cross.png
+    images/button-cross.png \
+    images/web.png \
+    images/folder.png

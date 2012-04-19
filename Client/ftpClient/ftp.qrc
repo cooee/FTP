@@ -1,7 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>images/dir.png</file>
-        <file>images/file.png</file>
         <file>images/button-cross.png</file>
         <file>images/button-pause.png</file>
         <file>images/button-play.png</file>
@@ -12,5 +10,7 @@
         <file>images/outbox.png</file>
         <file>images/question.png</file>
         <file>images/star.png</file>
+        <file>images/folder.png</file>
+        <file>images/web.png</file>
     </qresource>
 </RCC>
