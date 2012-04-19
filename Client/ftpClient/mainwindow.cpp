@@ -4,6 +4,7 @@
 #include "QSplitter"
 #include "view.h"
 #include "QFileSystemModel"
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -36,13 +37,9 @@ MainWindow::~MainWindow()
 }
 void MainWindow::actionConnect()
  {
-//    ui->mSiteManager->setFlat(true);
-
        ui->actionOpen->setShortcut(QKeySequence("Ctrl+o"));
        ui->actionOpen->setStatusTip("open a file");//设置状态栏...
        connect( ui->actionOpen, SIGNAL(activated()) , this, SLOT( open() ) );
-//       ui->label->setPixmap(QPixmap(":/images/dir.png"));
-//       ui->label->show();
  }
 void MainWindow::open()
  {
@@ -90,4 +87,51 @@ void MainWindow::initView()
     ui->mDetailed->header()->setStretchLastSection(false);
 
     ui->mLog->setText(tr("这里是日志"));
+    connect(ui->mSiteManager, SIGNAL(clicked()), this, SLOT(onSiteManagerClicked()));
+
+    createComboBox("/");
+    mDialog = new Dialog;
+
+}
+
+void MainWindow::onSiteManagerClicked()
+{
+    ui->mLog->setText(tr("这里是日志2"));
+    mDialog->show();
+}
+
+void MainWindow::on_mSiteManager_clicked()
+{
+
+}
+
+QComboBox *MainWindow::createComboBox(const QString &text)
+{
+    ui->mComboBox->setEditable(true);
+    ui->mComboBox->addItem(text);
+    ui->mComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    return ui->mComboBox;
+}
+
+void MainWindow::browse()
+ {
+     QString directory = QFileDialog::getExistingDirectory(this,
+                                tr("Find Files"), QDir::currentPath());
+
+     if (!directory.isEmpty()) {
+         if (ui->mComboBox->findText(directory) == -1)
+             ui->mComboBox->addItem(directory);
+         ui->mComboBox->setCurrentIndex(ui->mComboBox->findText(directory));
+     }
+ }
+
+void MainWindow::updateComboBox(QComboBox *comboBox)
+ {
+     if (comboBox->findText(comboBox->currentText()) == -1)
+         comboBox->addItem(comboBox->currentText());
+ }
+
+void MainWindow::on_mBrowse_clicked()
+{
+    browse();
 }

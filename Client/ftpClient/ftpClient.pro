@@ -12,12 +12,15 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    view.cpp
+    view.cpp \
+    dialog.cpp
 
 HEADERS  += mainwindow.h \
-    view.h
+    view.h \
+    dialog.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    dialog.ui
 
 RESOURCES += \
     ftp.qrc

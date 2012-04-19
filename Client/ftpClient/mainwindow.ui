@@ -277,7 +277,7 @@
       <rect>
        <x>10</x>
        <y>0</y>
-       <width>441</width>
+       <width>511</width>
        <height>51</height>
       </rect>
      </property>
@@ -303,7 +303,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="mHost"/>
+           <widget class="QLineEdit" name="mHost">
+            <property name="text">
+             <string>ftp.qt.nokia.com</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -317,7 +321,7 @@
         <item>
          <widget class="QLineEdit" name="mUser">
           <property name="echoMode">
-           <enum>QLineEdit::Password</enum>
+           <enum>QLineEdit::Normal</enum>
           </property>
          </widget>
         </item>
@@ -331,7 +335,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QLineEdit" name="mPassword"/>
+           <widget class="QLineEdit" name="mPassword">
+            <property name="echoMode">
+             <enum>QLineEdit::Password</enum>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -342,9 +350,9 @@
     <widget class="QWidget" name="horizontalLayoutWidget_7">
      <property name="geometry">
       <rect>
-       <x>450</x>
+       <x>530</x>
        <y>0</y>
-       <width>241</width>
+       <width>181</width>
        <height>51</height>
       </rect>
      </property>
@@ -357,7 +365,11 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="mPort"/>
+       <widget class="QLineEdit" name="mPort">
+        <property name="text">
+         <string>21</string>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="mQuickConnection">
@@ -385,19 +397,22 @@
         <property name="geometry">
          <rect>
           <x>50</x>
-          <y>0</y>
-          <width>461</width>
-          <height>51</height>
+          <y>10</y>
+          <width>361</width>
+          <height>31</height>
          </rect>
         </property>
         <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
-          <widget class="QLineEdit" name="mDir"/>
-         </item>
-         <item>
-          <widget class="QPushButton" name="mBrowse">
-           <property name="text">
-            <string>浏览</string>
+          <widget class="QComboBox" name="mComboBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="editable">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -514,6 +529,19 @@
         </property>
         <property name="pixmap">
          <pixmap resource="ftp.qrc">:/images/folder.png</pixmap>
+        </property>
+       </widget>
+       <widget class="QPushButton" name="mBrowse">
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>10</y>
+          <width>91</width>
+          <height>31</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>浏览</string>
         </property>
        </widget>
       </widget>
