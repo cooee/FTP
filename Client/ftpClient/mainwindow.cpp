@@ -67,9 +67,8 @@ void MainWindow::initView()
 //    ui->mLocalFileList->setHeaderLabels(QStringList() << tr("Name") << tr("Size") << tr("Owner") << tr("Group") << tr("Time"));
 //    ui->mLocalFileList->header()->setStretchLastSection(false);
 
-    QFileSystemModel *model = new QFileSystemModel;
-   model->setRootPath("/");
-   model->setRootPath("/usr");
+   model = new QFileSystemModel;
+   //model->setRootPath("/usr");
 //   model->set
    ui->mLocalFileList->setModel(model);
    ui->mLocalFileList->setAnimated(false);
@@ -89,7 +88,7 @@ void MainWindow::initView()
     ui->mLog->setText(tr("这里是日志"));
     connect(ui->mSiteManager, SIGNAL(clicked()), this, SLOT(onSiteManagerClicked()));
 
-    createComboBox("/");
+    createComboBox("/home");
     mDialog = new Dialog;
 
 }
@@ -122,6 +121,7 @@ void MainWindow::browse()
          if (ui->mComboBox->findText(directory) == -1)
              ui->mComboBox->addItem(directory);
          ui->mComboBox->setCurrentIndex(ui->mComboBox->findText(directory));
+         ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
      }
  }
 
@@ -134,4 +134,9 @@ void MainWindow::updateComboBox(QComboBox *comboBox)
 void MainWindow::on_mBrowse_clicked()
 {
     browse();
+}
+
+void MainWindow::on_mComboBox_textChanged(const QString &arg1)
+{
+    ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
 }

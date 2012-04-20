@@ -2,8 +2,11 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QFileSystemModel>
 #include"QComboBox"
+#include <iostream>
 #include "dialog.h"
+using namespace std;
 
 namespace Ui {
     class MainWindow;
@@ -37,6 +40,8 @@ private slots:
 
      void on_mBrowse_clicked();
 
+     void on_mComboBox_textChanged(const QString &arg1);
+
 private:
     Ui::MainWindow *ui;
     void actionConnect();
@@ -44,7 +49,9 @@ private:
     QComboBox *createComboBox(const QString &text);
     void browse();
     void updateComboBox(QComboBox *comboBox);
+
     Dialog *mDialog;
+    QFileSystemModel *model;
 };
 
 #endif // MAINWINDOW_H
