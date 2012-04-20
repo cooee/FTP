@@ -91,6 +91,12 @@ void MainWindow::initView()
     createComboBox("/home");
     mDialog = new Dialog;
 
+    ui->mHost->setText("127.0.0.1");
+    ui->mUser->setText("jason");
+    ui->mPassword->setText("maxwit");
+
+    //ui->mHost->setText("ftp.qt.nokia.com");
+
 }
 
 void MainWindow::onSiteManagerClicked()
@@ -139,4 +145,83 @@ void MainWindow::on_mBrowse_clicked()
 void MainWindow::on_mComboBox_textChanged(const QString &arg1)
 {
     ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
+}
+
+void MainWindow::ftpCommandFinished(int commandId, bool error)
+{
+    if (mFtp->currentCommand() == QFtp::ConnectToHost)
+    {
+        if (error)
+        {
+            QMessageBox::information(this, tr("FTP"),
+                                     tr("Unable to connect to the FTP server ")
+                                     .arg(ui->mHost->text()));
+            //connectOrDisconnect();
+            return;
+        }
+
+        if (ui->mUser->text() == "" && ui->mPassword->text() == "")
+            mFtp->login();
+        else
+        {
+            if (ui->mPassword->text() == "")
+            {
+                QMessageBox::information(this, tr("FTP"),
+                                        tr("Please input passwd"));
+                            //connectOrDisconnect();
+                return ;
+            }
+            mFtp->login(ui->mUser->text(), ui->mPassword->text());
+        }
+
+        return;
+    }
+
+    if (mFtp->currentCommand() == QFtp::Login)
+    {
+        if ( error != 0)
+        {
+            QMessageBox::information(this, tr("FTP"),
+                                     tr("User or Passwd error"));
+
+            return ;
+        }
+
+        mFtp->cd("/");
+        mFtp->list();
+    }
+}
+
+void MainWindow::addToFileList(const QUrlInfo &urlInfo)
+{
+    QTreeWidgetItem *item = new QTreeWidgetItem;
+    item->setText(0, urlInfo.name());
+    item->setText(1, QString::number(urlInfo.size()));
+    item->setText(2, urlInfo.owner());
+    item->setText(3, urlInfo.group());
+    item->setText(4, urlInfo.lastModified().toString("MMM dd yyyy"));
+
+    QPixmap pixmap(urlInfo.isDir() ? ":/images/folder.png" : ":/images/star.png");
+    item->setIcon(0, pixmap);
+
+    //isDirectory[urlInfo.name()] = urlInfo.isDir();
+    ui->mWebFileList->addTopLevelItem(item);
+    if (!ui->mWebFileList->currentItem()) {
+        ui->mWebFileList->setCurrentItem(ui->mWebFileList->topLevelItem(0));
+        ui->mWebFileList->setEnabled(true);
+    }
+}
+
+void MainWindow::on_mQuickConnection_clicked()
+{
+    mFtp = new QFtp(this);
+
+    connect(mFtp, SIGNAL(commandFinished(int,bool)),
+            this, SLOT(ftpCommandFinished(int,bool)));
+    connect(mFtp, SIGNAL(listInfo(QUrlInfo)),
+            this, SLOT(addToFileList(QUrlInfo)));
+
+    mFtp->connectToHost(ui->mHost->text(), ui->mPort->text().toInt());
+
+    ui->mWebFileList->clear();
 }

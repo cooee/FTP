@@ -3,6 +3,10 @@
 
 #include <QMainWindow>
 #include <QFileSystemModel>
+#include <QFtp>
+#include <QUrlInfo>
+#include <QPixmap>
+#include <QMessageBox>
 #include"QComboBox"
 #include <iostream>
 #include "dialog.h"
@@ -31,7 +35,8 @@ private slots:
 //     void about();
 //     void updateMenus();
 //     void updateWindowMenu();
-
+     void ftpCommandFinished(int commandId, bool error);
+     void addToFileList(const QUrlInfo &urlInfo);
 
      void onSiteManagerClicked();
 
@@ -41,6 +46,8 @@ private slots:
      void on_mBrowse_clicked();
 
      void on_mComboBox_textChanged(const QString &arg1);
+
+     void on_mQuickConnection_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -52,6 +59,8 @@ private:
 
     Dialog *mDialog;
     QFileSystemModel *model;
+
+    QFtp *mFtp;
 };
 
 #endif // MAINWINDOW_H
