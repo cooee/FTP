@@ -5,6 +5,8 @@
 #include <QFileSystemModel>
 #include <QFtp>
 #include <QUrlInfo>
+#include <QHash>
+#include <QTreeWidgetItem>
 #include <QPixmap>
 #include <QMessageBox>
 #include"QComboBox"
@@ -37,6 +39,7 @@ private slots:
 //     void updateWindowMenu();
      void ftpCommandFinished(int commandId, bool error);
      void addToFileList(const QUrlInfo &urlInfo);
+     void cdToDirectory(QTreeWidgetItem *item, int column);
 
      void onSiteManagerClicked();
 
@@ -61,6 +64,8 @@ private:
     QFileSystemModel *model;
 
     QFtp *mFtp;
+    QString mCurrentPath;
+    QHash<QString, bool> mIsDirectory;
 };
 
 #endif // MAINWINDOW_H

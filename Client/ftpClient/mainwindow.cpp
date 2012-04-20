@@ -96,6 +96,7 @@ void MainWindow::initView()
     ui->mPassword->setText("maxwit");
 
     //ui->mHost->setText("ftp.qt.nokia.com");
+    mCurrentPath.clear();
 
 }
 
@@ -204,11 +205,26 @@ void MainWindow::addToFileList(const QUrlInfo &urlInfo)
     QPixmap pixmap(urlInfo.isDir() ? ":/images/folder.png" : ":/images/star.png");
     item->setIcon(0, pixmap);
 
-    //isDirectory[urlInfo.name()] = urlInfo.isDir();
+    mIsDirectory[urlInfo.name()] = urlInfo.isDir();
     ui->mWebFileList->addTopLevelItem(item);
     if (!ui->mWebFileList->currentItem()) {
         ui->mWebFileList->setCurrentItem(ui->mWebFileList->topLevelItem(0));
         ui->mWebFileList->setEnabled(true);
+    }
+}
+
+void MainWindow::cdToDirectory(QTreeWidgetItem *item, int /*column*/)
+{
+    QString name = item->text(0);
+    if (mIsDirectory.value(name)) {
+        ui->mWebFileList->clear();
+        mIsDirectory.clear();
+        mCurrentPath += "/" + name;
+        mFtp->cd(mCurrentPath);
+        mFtp->list();
+
+        //cout << (mCurrentPath.toStdString()) << endl;
+        return;
     }
 }
 
@@ -220,8 +236,12 @@ void MainWindow::on_mQuickConnection_clicked()
             this, SLOT(ftpCommandFinished(int,bool)));
     connect(mFtp, SIGNAL(listInfo(QUrlInfo)),
             this, SLOT(addToFileList(QUrlInfo)));
+    connect(ui->mWebFileList, SIGNAL(itemActivated(QTreeWidgetItem*,int)),
+            this, SLOT(cdToDirectory(QTreeWidgetItem*,int)));
 
     mFtp->connectToHost(ui->mHost->text(), ui->mPort->text().toInt());
 
     ui->mWebFileList->clear();
+    this->mCurrentPath.clear();
 }
+
