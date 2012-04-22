@@ -63,17 +63,21 @@ func NewDataConn(addr string) *DataConn {
 }
 
 func (d *DataConn) Close() {
+	if d.writer != nil {
+		d.writer.Flush()
+		d.writer = nil
+	}
 	if d.conn != nil {
 		d.conn.Close()
+		d.conn = nil
 	}
 }
 
 type Response struct {
-	status           int
-	closerAfterReply bool
-	written          int64
-	conn             *Conn
-	req              *Request
+	closeAfterReply bool
+	written         int64
+	conn            *Conn
+	req             *Request
 }
 
 func (r *Response) WriteData(buf []byte) (int, error) {
@@ -92,6 +96,58 @@ func (r *Response) WriteData(buf []byte) (int, error) {
 		}
 	}
 	return n, err
+}
+
+func (r *Response) serveFile(content io.ReadSeeker, size int64) {
+	switch r.getTransferMode() {
+	case "BINARY":
+		io.CopyN(r.conn.data.writer, content, size)
+		r.conn.data.writer.Flush()
+	case "ASCII":
+		reader := bufio.NewReader(content)
+		for {
+			line, prefix, err := reader.ReadLine()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				// deal with err
+				break
+			}
+			_, err = r.WriteData(line)
+			if prefix {
+				continue
+			}
+			io.WriteString(r.conn.data.writer, "\r\n")
+		}
+	}
+}
+
+func (r *Response) receiveFile(content io.WriteSeeker) {
+	switch r.getTransferMode() {
+	case "BINARY":
+		io.Copy(content, r.conn.data.reader)
+	case "ASCII":
+		for {
+			line, err := r.conn.data.reader.ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				// deal with err
+				break
+			}
+			io.WriteString(content, strings.Replace(line, "\r", "", -1))
+		}
+	}
+}
+
+func (r *Response) setTransferMode(mode string) {
+	r.conn.transMode = mode
+}
+
+func (r *Response) getTransferMode() string {
+	return r.conn.transMode
 }
 
 func (r *Response) initDataConn(addr string) {
@@ -178,13 +234,15 @@ func (r *Response) Write(buf []byte) (int, error) {
 }
 
 type Conn struct {
-	remoteAddr string
-	user       *User
-	server     *Server
-	control    *net.TCPConn
-	reader     *bufio.Reader
-	writer     *bufio.Writer
-	data       *DataConn
+	remoteAddr  string
+	transMode   string
+	reqFileList []string
+	user        *User
+	server      *Server
+	control     *net.TCPConn
+	reader      *bufio.Reader
+	writer      *bufio.Writer
+	data        *DataConn
 }
 
 func (c *Conn) readRequest() (resp *Response, err error) {
@@ -255,7 +313,7 @@ func (c *Conn) Serve() {
 
 		handler.ServeFTP(resp, resp.req)
 		resp.finishRequest()
-		if resp.closerAfterReply {
+		if resp.closeAfterReply {
 			break
 		}
 	}
@@ -353,18 +411,6 @@ type ServeCmd struct {
 func NewServeCmd() *ServeCmd {
 	return &ServeCmd{cmdEntrys: make(map[string]Handler)}
 }
-
-// stay here
-/*
-func NewDefaultServeCmd(entrys map[string]func(*Response, *Request)) *ServeCmd {
-	serveCmd := &ServeCmd{cmdEntrys: make(map[string]Handler)}
-	for k, v := range entrys {
-		serveCmd.HandleFunc(k, v)
-	}
-
-	return serveCmd
-}
-*/
 
 var DefaultServeCmd = NewServeCmd()
 
