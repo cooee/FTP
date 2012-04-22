@@ -52,14 +52,22 @@ func NotFoundHandler() Handler {
 }
 
 type DataConn struct {
+	mode       string
 	remoteAddr string
+	ls         *net.TCPListener
 	conn       *net.TCPConn
 	reader     *bufio.Reader
 	writer     *bufio.Writer
 }
 
-func NewDataConn(addr string) *DataConn {
-	return &DataConn{remoteAddr: addr}
+func NewDataConn(arg interface{}, mode string) *DataConn {
+	switch mode {
+	case "ACTIVE":
+		return &DataConn{remoteAddr: arg.(string), mode: mode}
+	case "PASSIVE":
+		return &DataConn{ls: arg.(*net.TCPListener), mode: mode}
+	}
+	return nil
 }
 
 func (d *DataConn) Close() {
@@ -150,8 +158,8 @@ func (r *Response) getTransferMode() string {
 	return r.conn.transMode
 }
 
-func (r *Response) initDataConn(addr string) {
-	r.conn.data = NewDataConn(addr)
+func (r *Response) initDataConn(arg interface{}, mode string) {
+	r.conn.data = NewDataConn(arg, mode)
 }
 
 func (r *Response) getDataConn() *DataConn {
@@ -162,16 +170,25 @@ func (r *Response) closeDataConn() {
 	r.conn.data.Close()
 }
 
-func (r *Response) connectDataConn() error {
-	dataConn := r.getDataConn()
-	if dataConn == nil {
-		return errors.New("init data conn failed")
+func resolvePassiveDataConn(dc *DataConn) (err error) {
+	if dc.ls == nil {
+		return errors.New("listener not spcify")
 	}
-	if len(dataConn.remoteAddr) == 0 {
+
+	dc.conn, err = dc.ls.AcceptTCP()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func resolveActiveDataConn(dc *DataConn) error {
+	if len(dc.remoteAddr) == 0 {
 		return errors.New("remote addr not specify")
 	}
 
-	fields := strings.Split(dataConn.remoteAddr, ",")
+	fields := strings.Split(dc.remoteAddr, ",")
 	if len(fields) != 6 {
 		return errors.New("invalid addr")
 	}
@@ -192,10 +209,35 @@ func (r *Response) connectDataConn() error {
 		return err
 	}
 
-	dataConn.conn, err = net.DialTCP("tcp", lAddr, rAddr)
+	dc.conn, err = net.DialTCP("tcp", lAddr, rAddr)
 	if err != nil {
 		if err == syscall.EADDRINUSE {
-			dataConn.conn, err = net.DialTCP("tcp", nil, rAddr)
+			dc.conn, err = net.DialTCP("tcp", nil, rAddr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *Response) connectDataConn() error {
+	dataConn := r.getDataConn()
+	if dataConn == nil {
+		return errors.New("init data conn failed")
+	}
+
+	switch dataConn.mode {
+	case "ACTIVE":
+		err := resolveActiveDataConn(dataConn)
+		if err != nil {
+			return err
+		}
+	case "PASSIVE":
+		err := resolvePassiveDataConn(dataConn)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -296,6 +338,9 @@ func (c *Conn) Serve() {
 	for {
 		resp, err := c.readRequest()
 		if err != nil {
+			if err.(net.Error).Timeout() {
+				c.WriteResponseMessage(StatusServiceShutDown, "Timeout.")
+			}
 			msg := "bad reuqest"
 			if err == errInvalidRequest {
 				msg = "500 bad Request"

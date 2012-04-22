@@ -10,7 +10,7 @@ func init() {
 	HandleFunc("CWD", ChangeDir)
 	HandleFunc("CDUP", ChangeToUpDir)
 	HandleFunc("ABORT", Abort)
-	HandleFunc("Pasv", Passive)
+	HandleFunc("PASV", Passive)
 	HandleFunc("PWD", CurrentWorkDir)
 	HandleFunc("MKD", Mkdir)
 	HandleFunc("RMD", Rmdir)

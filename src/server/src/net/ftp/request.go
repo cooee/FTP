@@ -38,7 +38,6 @@ func ReadRequest(b *bufio.Reader) (req *Request, err error) {
 		return nil, errInvalidRequest
 	}
 	req.cmd, req.arg = params[0], params[1:]
-	println(req.cmd)
 
 	return req, nil
 }

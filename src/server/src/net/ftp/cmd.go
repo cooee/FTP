@@ -3,9 +3,11 @@ package ftp
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func WriteString(w *Response, status int, msg string) {
@@ -94,7 +96,7 @@ func List(w *Response, r *Request) {
 }
 
 func Port(w *Response, r *Request) {
-	w.initDataConn(r.arg[0])
+	w.initDataConn(r.arg[0], "ACTIVE")
 	w.WriteString(StatusCommandOk, "PORT command successful. Consider using PASV.")
 }
 
@@ -102,6 +104,17 @@ func Abort(w *Response, r *Request) {
 }
 
 func Passive(w *Response, r *Request) {
+	ls, err := net.ListenTCP("tcp", &net.TCPAddr{net.ParseIP("127.0.0.1"), 0})
+	if err != nil {
+		//
+	}
+
+	h := ls.Addr().(*net.TCPAddr).Port >> 8
+	l := ls.Addr().(*net.TCPAddr).Port & 255
+	addr := fmt.Sprintf("%s,%d,%d", strings.Replace(ls.Addr().(*net.TCPAddr).IP.String(), ".", ",", -1), h, l)
+
+	w.initDataConn(ls, "PASSIVE")
+	w.WriteString(StatusPassiveMode, "Entering Passive Mode("+addr+")")
 }
 
 func CurrentWorkDir(w *Response, r *Request) {
