@@ -9,7 +9,10 @@ import (
 	"log"
 	"net"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -21,57 +24,153 @@ var (
 	ErrHandlerTimeout = errors.New("Ftp handler timeout")
 )
 
+const (
+	DEFAULTRTIMEOUT = 300 * time.Second
+	DEFAULTWTIMEOUT = 10 * time.Second
+)
+
 type Handler interface {
-	ServeFTP(w ResponseWriter, r *Request)
+	ServeFTP(w *Response, r *Request)
 }
 
-type HandlerFunc func(w ResponseWriter, r *Request)
+type HandlerFunc func(w *Response, r *Request)
 
-func (f HandlerFunc) ServeFTP(w ResponseWriter, r *Request) {
+func (f HandlerFunc) ServeFTP(w *Response, r *Request) {
 	f(w, r)
 }
 
-func Error(w ResponseWriter, error string, status int) {
+func Error(w *Response, error string, status int) {
 	fmt.Fprintf(w, "%d %s", status, error)
 }
 
-func NotFound(w ResponseWriter, r *Request) {
-	Error(w, "command not support", StatusSyntaxErr)
+func NotFound(w *Response, r *Request) {
+	Error(w, "command not support", StatusLoginFailed)
 }
 
 func NotFoundHandler() Handler {
 	return HandlerFunc(NotFound)
 }
 
-type ResponseWriter interface {
-	Write([]byte) (int, error)
+type DataConn struct {
+	remoteAddr string
+	conn       *net.TCPConn
+	reader     *bufio.Reader
+	writer     *bufio.Writer
 }
 
-type response struct {
+func NewDataConn(addr string) *DataConn {
+	return &DataConn{remoteAddr: addr}
+}
+
+func (d *DataConn) Close() {
+	if d.conn != nil {
+		d.conn.Close()
+	}
+}
+
+type Response struct {
+	status           int
+	closerAfterReply bool
+	written          int64
 	conn             *Conn
 	req              *Request
-	status           int
-	written          int64
-	closerAfterReply bool
 }
 
-func (resp *response) finishRequest() {
-	resp.conn.writer.Flush()
-}
-
-func (resp *response) Write(buf []byte) (int, error) {
+func (r *Response) WriteData(buf []byte) (int, error) {
 	bufLen := len(buf)
 	if bufLen == 0 {
 		return 0, nil
 	}
-	resp.written += int64(bufLen)
-	n, err := resp.conn.writer.Write(buf)
+	r.written += int64(bufLen)
+	n, err := r.conn.data.writer.Write(buf)
 	if err == nil {
 		if n != bufLen {
 			err = io.ErrShortWrite
 		}
 		if err == nil {
-			io.WriteString(resp.conn.writer, "\r\n")
+			r.conn.data.writer.Flush()
+		}
+	}
+	return n, err
+}
+
+func (r *Response) initDataConn(addr string) {
+	r.conn.data = NewDataConn(addr)
+}
+
+func (r *Response) getDataConn() *DataConn {
+	return r.conn.data
+}
+
+func (r *Response) closeDataConn() {
+	r.conn.data.Close()
+}
+
+func (r *Response) connectDataConn() error {
+	dataConn := r.getDataConn()
+	if dataConn == nil {
+		return errors.New("init data conn failed")
+	}
+	if len(dataConn.remoteAddr) == 0 {
+		return errors.New("remote addr not specify")
+	}
+
+	fields := strings.Split(dataConn.remoteAddr, ",")
+	if len(fields) != 6 {
+		return errors.New("invalid addr")
+	}
+	h, err := strconv.Atoi(fields[4])
+	if err != nil {
+		return err
+	}
+	l, err := strconv.Atoi(fields[5])
+	if err != nil {
+		return err
+	}
+	rAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", strings.Join(fields[:4], "."), h*256+l))
+	if err != nil {
+		return err
+	}
+	lAddr, err := net.ResolveTCPAddr("tcp", "localhost:20")
+	if err != nil {
+		return err
+	}
+
+	dataConn.conn, err = net.DialTCP("tcp", lAddr, rAddr)
+	if err != nil {
+		if err == syscall.EADDRINUSE {
+			dataConn.conn, err = net.DialTCP("tcp", nil, rAddr)
+		}
+	}
+
+	dataConn.reader = bufio.NewReader(dataConn.conn)
+	dataConn.writer = bufio.NewWriter(dataConn.conn)
+
+	return nil
+}
+
+func (r *Response) WriteString(status int, messge string) {
+	resp := fmt.Sprintf("%d %s", status, messge)
+	io.WriteString(r, resp)
+}
+
+func (r *Response) finishRequest() {
+}
+
+func (r *Response) Write(buf []byte) (int, error) {
+	bufLen := len(buf)
+	if bufLen == 0 {
+		return 0, nil
+	}
+	r.written += int64(bufLen)
+	n, err := r.conn.writer.Write(buf)
+	if err == nil {
+		if n != bufLen {
+			err = io.ErrShortWrite
+		}
+		if err == nil {
+			io.WriteString(r.conn.writer, "\r\n")
+			r.conn.writer.Flush()
 		}
 	}
 
@@ -79,23 +178,23 @@ func (resp *response) Write(buf []byte) (int, error) {
 }
 
 type Conn struct {
-	currentWorkDir string
-	remoteAddr     string
-	server         *Server
-	control        *net.TCPConn
-	data           *net.TCPConn
-	reader         *bufio.Reader
-	writer         *bufio.Writer
+	remoteAddr string
+	user       *User
+	server     *Server
+	control    *net.TCPConn
+	reader     *bufio.Reader
+	writer     *bufio.Writer
+	data       *DataConn
 }
 
-func (c *Conn) readRequest() (resp *response, err error) {
+func (c *Conn) readRequest() (resp *Response, err error) {
 	req, err := ReadRequest(c.reader)
 	if err != nil {
 		return nil, err
 	}
 	req.remoteAddr = c.remoteAddr
 
-	resp = new(response)
+	resp = new(Response)
 	resp.conn = c
 	resp.req = req
 
@@ -106,6 +205,9 @@ func (c *Conn) close() {
 	if c.writer != nil {
 		c.writer.Flush()
 		c.writer = nil
+	}
+	if c.data != nil {
+		c.data.Close()
 	}
 	if c.control != nil {
 		c.control.Close()
@@ -168,22 +270,24 @@ func (c *Conn) WriteResponseMessage(status int, args ...interface{}) (int, error
 	return count, err
 }
 
-func ListenAndServe(root string, addr string) error {
+func ListenAndServe(rtimeout, wtimeout time.Duration, addr string) error {
 	lAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
 		return err
 	}
 
-	if len(root) == 0 {
-		root = "/"
+	if rtimeout == 0 {
+		rtimeout = DEFAULTRTIMEOUT
+	}
+	if wtimeout == 0 {
+		wtimeout = DEFAULTWTIMEOUT
 	}
 
-	server := &Server{LAddr: lAddr, workDir: root}
+	server := &Server{LAddr: lAddr, ReadTimeout: rtimeout, WriteTimeout: wtimeout}
 	return server.ListenAndServe()
 }
 
 type Server struct {
-	workDir      string
 	Handler      Handler
 	LAddr        *net.TCPAddr
 	ReadTimeout  time.Duration
@@ -234,7 +338,6 @@ func (srv *Server) Serve(l *net.TCPListener) error {
 func (srv *Server) newConn(tcpConn *net.TCPConn) (conn *Conn, err error) {
 	conn = new(Conn)
 	conn.remoteAddr = tcpConn.RemoteAddr().String()
-	conn.currentWorkDir = srv.workDir
 	conn.server = srv
 	conn.control = tcpConn
 	conn.reader = bufio.NewReader(tcpConn)
@@ -251,7 +354,9 @@ func NewServeCmd() *ServeCmd {
 	return &ServeCmd{cmdEntrys: make(map[string]Handler)}
 }
 
-func NewDefaultServeCmd(entrys map[string]func(ResponseWriter, *Request)) *ServeCmd {
+// stay here
+/*
+func NewDefaultServeCmd(entrys map[string]func(*Response, *Request)) *ServeCmd {
 	serveCmd := &ServeCmd{cmdEntrys: make(map[string]Handler)}
 	for k, v := range entrys {
 		serveCmd.HandleFunc(k, v)
@@ -259,14 +364,13 @@ func NewDefaultServeCmd(entrys map[string]func(ResponseWriter, *Request)) *Serve
 
 	return serveCmd
 }
+*/
 
-var DefaultServeCmd = NewDefaultServeCmd(defaultHandlFuncEntrys)
+var DefaultServeCmd = NewServeCmd()
 
 func (s *ServeCmd) match(cmd string) Handler {
-	for k, v := range s.cmdEntrys {
-		if k == cmd {
-			return v
-		}
+	if handler, ok := s.cmdEntrys[cmd]; ok {
+		return handler
 	}
 	return nil
 }
@@ -283,7 +387,7 @@ func (s *ServeCmd) handler(r *Request) Handler {
 	return h
 }
 
-func (s *ServeCmd) ServeFTP(w ResponseWriter, r *Request) {
+func (s *ServeCmd) ServeFTP(w *Response, r *Request) {
 	s.handler(r).ServeFTP(w, r)
 }
 
@@ -293,63 +397,10 @@ func (s *ServeCmd) Handle(cmd string, handler Handler) {
 	s.cmdEntrys[cmd] = handler
 }
 
-func (s *ServeCmd) HandleFunc(cmd string, handler func(w ResponseWriter, r *Request)) {
+func (s *ServeCmd) HandleFunc(cmd string, handler func(w *Response, r *Request)) {
 	s.Handle(cmd, HandlerFunc(handler))
 }
 
-func HandleFunc(cmd string, handler func(w ResponseWriter, r *Request)) {
+func HandleFunc(cmd string, handler func(w *Response, r *Request)) {
 	DefaultServeCmd.HandleFunc(cmd, handler)
-}
-
-func DefaultRegisterHanleFunc(entry map[string]Handler)
-
-func TimeoutHandler(h Handler, dt time.Duration, msg string) Handler {
-	f := func() <-chan time.Time {
-		return time.After(dt)
-	}
-
-	return &timeoutHandler{h, f, msg}
-}
-
-type timeoutHandler struct {
-	handler Handler
-	timeout func() <-chan time.Time
-	body    string
-}
-
-func (h *timeoutHandler) ServeFTP(w ResponseWriter, r *Request) {
-	done := make(chan bool)
-	tw := &timeoutWriter{w: w}
-	go func() {
-		h.handler.ServeFTP(w, r)
-		done <- true
-	}()
-
-	select {
-	case <-done:
-		return
-	case <-h.timeout():
-		tw.mu.Lock()
-		defer tw.mu.Unlock()
-		tw.w.Write([]byte(h.body))
-	}
-	tw.timeout = true
-}
-
-type timeoutWriter struct {
-	w ResponseWriter
-
-	mu      sync.Mutex
-	timeout bool
-}
-
-func (tw *timeoutWriter) Write(p []byte) (int, error) {
-	tw.mu.Lock()
-	timeOut := tw.timeout
-	tw.mu.Unlock()
-	if timeOut {
-		return 0, ErrHandlerTimeout
-	}
-
-	return tw.w.Write(p)
 }

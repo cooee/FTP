@@ -8,7 +8,7 @@ const (
 	StatusClosingData    = 226
 	StatusLoginSucces    = 230
 	StatusFileActionOk   = 250
-	StatusNeedPasswd     = 331
+	StatusAskPasswd      = 331
 	StatusSyntaxErr      = 500
 	StatusLoginFailed    = 530
 )
