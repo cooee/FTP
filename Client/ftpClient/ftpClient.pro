@@ -1,32 +1,26 @@
-#-------------------------------------------------
-#
+# -------------------------------------------------
 # Project created by QtCreator 2012-04-16T22:05:06
-#
-#-------------------------------------------------
-
-QT       += core gui
-QT       += network
+# -------------------------------------------------
+QT += core \
+    gui
+QT += network
 TARGET = ftpClient
 TEMPLATE = app
-
-
-SOURCES += main.cpp\
-        mainwindow.cpp \
+SOURCES += main.cpp \
+    mainwindow.cpp \
     view.cpp \
-    dialog.cpp
-
-HEADERS  += mainwindow.h \
+    dialog.cpp \
+    ftp.cpp \
+    ftpdownload.cpp
+HEADERS += mainwindow.h \
     view.h \
-    dialog.h
-
-FORMS    += mainwindow.ui \
+    dialog.h \
+    ftp.h \
+    ftpdownload.h
+FORMS += mainwindow.ui \
     dialog.ui
-
-RESOURCES += \
-    ftp.qrc
-
-OTHER_FILES += \
-    images/star.png \
+RESOURCES += ftp.qrc
+OTHER_FILES += images/star.png \
     images/question.png \
     images/outbox.png \
     images/inbox.png \

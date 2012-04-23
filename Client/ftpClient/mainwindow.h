@@ -12,7 +12,11 @@
 #include"QComboBox"
 #include <iostream>
 #include "dialog.h"
+#include "ftp.h"
+#include "ftpdownload.h"
 using namespace std;
+
+#define TASK_MAX 20
 
 namespace Ui {
     class MainWindow;
@@ -41,6 +45,8 @@ private slots:
      void addToFileList(const QUrlInfo &urlInfo);
      void cdToDirectory(QTreeWidgetItem *item, int column);
 
+     void receiveData(char*p,int len);
+
      void onSiteManagerClicked();
 
      void on_mSiteManager_clicked();
@@ -51,6 +57,8 @@ private slots:
      void on_mComboBox_textChanged(const QString &arg1);
 
      void on_mQuickConnection_clicked();
+
+     void on_mDownload_clicked();
 
 private:
     Ui::MainWindow *ui;
@@ -63,9 +71,12 @@ private:
     Dialog *mDialog;
     QFileSystemModel *model;
 
+    int mTaskNum;
     QFtp *mFtp;
     QString mCurrentPath;
     QHash<QString, bool> mIsDirectory;
+    //list<FtpDownload > mFileTask;
+    FtpDownload* mFileTask[TASK_MAX];
 };
 
 #endif // MAINWINDOW_H

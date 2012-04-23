@@ -12,6 +12,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     initView();
     actionConnect();
+    mTaskNum = 0;
 //    QSplitter *h1Splitter = new QSplitter;
 //    QSplitter *h2Splitter = new QSplitter;
 //    QSplitter *vSplitter = new QSplitter;
@@ -90,6 +91,9 @@ void MainWindow::initView()
 
     createComboBox("/home");
     mDialog = new Dialog;
+
+    ui->mDownload->setEnabled(false);
+    ui->mDisconnect->setEnabled(false);
 
     ui->mHost->setText("127.0.0.1");
     ui->mUser->setText("jason");
@@ -184,10 +188,12 @@ void MainWindow::ftpCommandFinished(int commandId, bool error)
         {
             QMessageBox::information(this, tr("FTP"),
                                      tr("User or Passwd error"));
-
+            mFtp->abort();
+            mFtp->deleteLater();
             return ;
         }
 
+        ui->mDownload->setEnabled(true);
         mFtp->cd("/");
         mFtp->list();
     }
@@ -215,9 +221,13 @@ void MainWindow::addToFileList(const QUrlInfo &urlInfo)
 
 void MainWindow::cdToDirectory(QTreeWidgetItem *item, int /*column*/)
 {
+
     QString name = item->text(0);
+    //cout << name.toStdString() << endl;
+
     if (mIsDirectory.value(name)) {
         ui->mWebFileList->clear();
+        //ui->mWebFileList->clearFocus();
         mIsDirectory.clear();
         mCurrentPath += "/" + name;
         mFtp->cd(mCurrentPath);
@@ -242,6 +252,46 @@ void MainWindow::on_mQuickConnection_clicked()
     mFtp->connectToHost(ui->mHost->text(), ui->mPort->text().toInt());
 
     ui->mWebFileList->clear();
-    this->mCurrentPath.clear();
+    this->mCurrentPath = "";
 }
 
+
+void MainWindow::on_mDownload_clicked()
+{
+    long mFileSize = ui->mWebFileList->currentItem()->text(1).toLong();
+    QString mHost = ui->mHost->text();
+    QString mUser = ui->mUser->text();
+    QString mPasswd = ui->mPassword->text();
+    //QString mFileName = (mCurrentPath  + "/") + ui->mWebFileList->currentItem()->text(0);
+    QString mFileName = ui->mWebFileList->currentItem()->text(0);
+    //QString mFileName = "test";
+
+    QByteArray mQbHost = mHost.toLatin1();
+    char *mCharHost = mQbHost.data();
+
+    QByteArray mQbUser = mUser.toLatin1();
+    char *mCharUser = mQbUser.data();
+
+    QByteArray mQbPasswd = mPasswd.toLatin1();
+    char *mCharPasswd = mQbPasswd.data();
+
+    QByteArray mQbFileName = mFileName.toLatin1();
+    char *mCharFileName = mQbFileName.data();
+
+    QByteArray mQbCurrent = this->mCurrentPath.toLatin1();
+    char *mCharCurrentPath = mQbCurrent.data();
+
+    FtpDownload *mDowloadFtp = new FtpDownload(mCharHost, mCharUser,mCharPasswd,mCharCurrentPath,mCharFileName, mFileSize);
+    this->mFileTask[this->mTaskNum] = mDowloadFtp;
+    //this->mFileTask.push_back(mDowloadFtp);
+
+    connect(mFileTask[mTaskNum++],SIGNAL(sendData(char*,int )),this,SLOT(receiveData(char*,int )));
+    //this->mDowloadFtp = new Ftp(mCharHost, mCharUser,mCharPasswd,mCharFileName, long mSize);
+
+    //cout << "filename  " <<  (mFileName).toStdString() << endl;
+}
+
+void MainWindow::receiveData(char*p,int len)
+{
+    ui->mWebDir->setText(QString::number(len));
+}
