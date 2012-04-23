@@ -101,6 +101,9 @@ func Port(w *Response, r *Request) {
 }
 
 func Abort(w *Response, r *Request) {
+	w.WriteString(StatusTransferAborted, "Transfer Aborted. Data connection closed.")
+	w.WriteString(StatusClosingData, "ABOR commad ok.")
+	w.closeDataConn()
 }
 
 func Passive(w *Response, r *Request) {
@@ -199,8 +202,15 @@ func serveFile(w *Response, r *Request) {
 	}
 	w.WriteString(StatusFileOk, "Opening "+w.getTransferMode()+" mode connection for "+
 		r.arg[0]+"("+strconv.FormatInt(size, 10)+" bytes).")
-	w.serveFile(f, size)
-	w.WriteString(StatusClosingData, "Transfer completed.")
+
+	done := make(chan int, 1)
+	w.serveFile(f, size, done)
+	finished := <-done
+	if finished == 0 {
+		w.conn.data.writer.Flush()
+		w.closeDataConn()
+		w.WriteString(StatusClosingData, "Transfer completed.")
+	}
 }
 
 func ReceiveFile(w *Response, r *Request) {
