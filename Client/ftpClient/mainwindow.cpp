@@ -95,11 +95,12 @@ void MainWindow::initView()
     ui->mDownload->setEnabled(false);
     ui->mDisconnect->setEnabled(false);
 
-    ui->mHost->setText("127.0.0.1");
-    ui->mUser->setText("jason");
-    ui->mPassword->setText("maxwit");
+//    ui->mHost->setText("127.0.0.1");
+//    ui->mUser->setText("jason");
+//    ui->mPassword->setText("maxwit");
 
     //ui->mHost->setText("ftp.qt.nokia.com");
+    loadConfig();
     mCurrentPath.clear();
 
 }
@@ -149,7 +150,15 @@ void MainWindow::on_mBrowse_clicked()
 
 void MainWindow::on_mComboBox_textChanged(const QString &arg1)
 {
-    ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
+//    ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
+    QString directory = arg1;
+    if (!arg1.isEmpty()) {
+        if (ui->mComboBox->findText(directory) == -1)
+            ui->mComboBox->addItem(directory);
+        ui->mComboBox->setCurrentIndex(ui->mComboBox->findText(directory));
+        ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
+    }
+
 }
 
 void MainWindow::ftpCommandFinished(int commandId, bool error)
@@ -294,4 +303,70 @@ void MainWindow::on_mDownload_clicked()
 void MainWindow::receiveData(char*p,int len)
 {
     ui->mWebDir->setText(QString::number(len));
+}
+
+void MainWindow::saveConfig()
+{
+    QFile tarFile("config.xml");
+    if (!tarFile.open(QFile::WriteOnly | QFile::Text | QIODevice::Truncate))
+    {
+       QMessageBox::warning(this, tr("Warning/ Convert"),
+       tr("Cannot open target file %1:\n%2.").arg("config.ini")
+         .arg(tarFile.errorString()));
+         return;
+    }
+    QXmlStreamWriter writer(&tarFile);
+
+    writer.setAutoFormatting(true);
+
+//    QXmlStreamAttribute *attr = new QXmlStreamAttribute;
+//    attr.isDefault();
+    writer.writeStartElement("config");
+    writer.writeTextElement("host",ui->mHost->text());
+    writer.writeTextElement("user",ui->mUser->text());
+    writer.writeTextElement("password",ui->mPassword->text());
+    writer.writeEndElement();
+    writer.writeEndDocument();
+    tarFile.close();
+}
+
+void MainWindow::loadConfig()
+{
+    QFile tarFile("config.xml");
+    if (!tarFile.open(QFile::ReadOnly | QFile::Text))
+    {
+       QMessageBox::warning(this, tr("Warning/ Convert"),
+       tr("Cannot open target file %1:\n%2.").arg("config.xml")
+         .arg(tarFile.errorString()));
+         return;
+    }
+   QXmlStreamReader xmlreader(&tarFile);
+   while (!xmlreader.atEnd()) {
+         xmlreader.readNext();
+         {
+              if (xmlreader.name() == "config")
+                    xmlreader.readNext();
+                 if(xmlreader.name() == "host")
+                 {
+//                       qDebug() << "name " << xmlreader.name() << "text " << xmlreader.readElementText();
+                       ui->mHost->setText(xmlreader.readElementText());
+                 } else if (xmlreader.name() == "user") {
+//                       qDebug() << "name " << xmlreader.name() << "text " << xmlreader.readElementText();
+                      ui->mUser->setText(xmlreader.readElementText());
+                 }
+                 else if (xmlreader.name() == "password")
+                 {
+                      ui->mPassword->setText(xmlreader.readElementText());
+//                      qDebug() << "name " << xmlreader.name() << "text " << xmlreader.readElementText();
+                 }
+
+         }
+
+   }
+   tarFile.close();
+}
+
+void MainWindow::on_mSetting_clicked()
+{
+    saveConfig();
 }

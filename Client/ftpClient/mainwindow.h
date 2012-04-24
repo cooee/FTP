@@ -14,6 +14,8 @@
 #include "dialog.h"
 #include "ftp.h"
 #include "ftpdownload.h"
+#include "QXmlStreamWriter"
+#include "QDebug"
 using namespace std;
 
 #define TASK_MAX 20
@@ -60,6 +62,8 @@ private slots:
 
      void on_mDownload_clicked();
 
+     void on_mSetting_clicked();
+
 private:
     Ui::MainWindow *ui;
     void actionConnect();
@@ -67,6 +71,7 @@ private:
     QComboBox *createComboBox(const QString &text);
     void browse();
     void updateComboBox(QComboBox *comboBox);
+
 
     Dialog *mDialog;
     QFileSystemModel *model;
@@ -77,6 +82,9 @@ private:
     QHash<QString, bool> mIsDirectory;
     //list<FtpDownload > mFileTask;
     FtpDownload* mFileTask[TASK_MAX];
+
+     void saveConfig();
+     void loadConfig();
 };
 
 #endif // MAINWINDOW_H

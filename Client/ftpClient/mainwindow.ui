@@ -79,6 +79,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="mDisconnect">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
         <property name="statusTip">
          <string>断开连接</string>
         </property>
@@ -352,7 +355,7 @@
       <rect>
        <x>530</x>
        <y>0</y>
-       <width>181</width>
+       <width>187</width>
        <height>51</height>
       </rect>
      </property>
@@ -439,6 +442,13 @@
          <layout class="QHBoxLayout" name="horizontalLayout_11">
           <item>
            <widget class="QLineEdit" name="mWebDir"/>
+          </item>
+          <item>
+           <widget class="QPushButton" name="mUpDir">
+            <property name="text">
+             <string>返回上级</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
