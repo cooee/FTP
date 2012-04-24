@@ -4,7 +4,7 @@ FtpDownload::FtpDownload()
 {
 }
 
-FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile, long mSize)
+FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile, long long mSize)
 {
     int i;
     int downloadsize, offset;
@@ -12,12 +12,16 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
     char tmpname[BUF_LEN];
     //char trans_filename[BUF_LEN];
 
+    mDowloadFlag = true;
+    mFinish = 0;
+
+    strncpy(mSrcFileName, mFile, strlen(mFile) + 1);
+    strncpy(mDstFileName, mFile, strlen(mFile) + 1);
     //sockfd = ftp_login();
     //sprintf(trans_filename, "/srv/ftp/%s", filename);
     //size = get_size(sockfd, trans_filename);
 
     mFileSize = mSize;
-    cout << "mFileSize   " << mFileSize << endl;
     sprintf(tmpname, "%s.inf", mFile);
 
     info_fd = open(tmpname, O_RDWR);
@@ -59,15 +63,36 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
 
     for (i = 0; i < THREADNUM ;i++)
     {
-        connect(mThread[i],SIGNAL(sendData(char*,int )),this,SLOT(receiveData(char*,int )));
+        connect(mThread[i],SIGNAL(sendData(char*,long long )),this,SLOT(receiveData(char*,long long )));
         mThread[i]->start();
     }
 
     this->mThreadNum = i;
 }
 
-void FtpDownload::receiveData(char*p,int len)
+void FtpDownload::receiveData(char*p,long long len)
 {
-   emit sendData(NULL,100 * len / this->mFileSize);
+    mProcess = 100 * len / this->mFileSize;
+   emit sendData(NULL,mProcess);
    // emit sendData(NULL,len);
+}
+
+void FtpDownload::stop()
+{
+    mDowloadFlag = false;
+
+    for (int i = 0; i < THREADNUM ;i++)
+    {
+        mThread[i]->stop();
+    }
+}
+
+void FtpDownload::contin()
+{
+    mDowloadFlag = true;
+
+    for (int i = 0; i < THREADNUM ;i++)
+    {
+        mThread[i]->contin();;
+    }
 }

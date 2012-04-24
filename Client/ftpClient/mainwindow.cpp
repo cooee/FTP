@@ -13,6 +13,13 @@ MainWindow::MainWindow(QWidget *parent) :
     initView();
     actionConnect();
     mTaskNum = 0;
+    mSelectTask = 0;
+    mLogList.clear();
+    mLogStr = "";
+
+    connect(ui->mDetailed, SIGNAL(itemClicked(QTreeWidgetItem *, int)),
+                this, SLOT(operateFile(QTreeWidgetItem*,int)));
+
 //    QSplitter *h1Splitter = new QSplitter;
 //    QSplitter *h2Splitter = new QSplitter;
 //    QSplitter *vSplitter = new QSplitter;
@@ -68,10 +75,10 @@ void MainWindow::initView()
 //    ui->mLocalFileList->setHeaderLabels(QStringList() << tr("Name") << tr("Size") << tr("Owner") << tr("Group") << tr("Time"));
 //    ui->mLocalFileList->header()->setStretchLastSection(false);
 
-   model = new QFileSystemModel;
+   mModel = new QFileSystemModel;
    //model->setRootPath("/usr");
 //   model->set
-   ui->mLocalFileList->setModel(model);
+   ui->mLocalFileList->setModel(mModel);
    ui->mLocalFileList->setAnimated(false);
    ui->mLocalFileList->setIndentation(20);
    ui->mLocalFileList->setSortingEnabled(true);
@@ -83,7 +90,8 @@ void MainWindow::initView()
     ui->mWebFileList->header()->setStretchLastSection(false);
 
     ui->mDetailed->setRootIsDecorated(false);
-    ui->mDetailed->setHeaderLabels(QStringList() << tr("源文件") << tr("大小") << tr("日期") << tr("目标") << tr("进度"));
+
+    ui->mDetailed->setHeaderLabels(QStringList() << tr("任务") << tr("源文件") << tr("大小") << tr("日期") << tr("目标") << tr("进度"));
     ui->mDetailed->header()->setStretchLastSection(false);
 
     ui->mLog->setText(tr("这里是日志"));
@@ -94,12 +102,19 @@ void MainWindow::initView()
 
     ui->mDownload->setEnabled(false);
     ui->mDisconnect->setEnabled(false);
+    ui->mstart->setEnabled(false);
+    ui->mPause->setEnabled(false);
+    ui->mUpload->setEnabled(false);
+    ui->mReconnect->setEnabled(false);
+
 
 //    ui->mHost->setText("127.0.0.1");
 //    ui->mUser->setText("jason");
 //    ui->mPassword->setText("maxwit");
 
-    //ui->mHost->setText("ftp.qt.nokia.com");
+    ui->mHost->setText("ftp.qt.nokia.com");
+    ui->mUser->setText("anonymous");
+    ui->mPassword->setText("123");
     loadConfig();
     mCurrentPath.clear();
 
@@ -133,7 +148,7 @@ void MainWindow::browse()
          if (ui->mComboBox->findText(directory) == -1)
              ui->mComboBox->addItem(directory);
          ui->mComboBox->setCurrentIndex(ui->mComboBox->findText(directory));
-         ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
+         ui->mLocalFileList->setRootIndex(mModel->setRootPath(ui->mComboBox->currentText()));
      }
  }
 
@@ -156,7 +171,7 @@ void MainWindow::on_mComboBox_textChanged(const QString &arg1)
         if (ui->mComboBox->findText(directory) == -1)
             ui->mComboBox->addItem(directory);
         ui->mComboBox->setCurrentIndex(ui->mComboBox->findText(directory));
-        ui->mLocalFileList->setRootIndex(model->setRootPath(ui->mComboBox->currentText()));
+        ui->mLocalFileList->setRootIndex(mModel->setRootPath(ui->mComboBox->currentText()));
     }
 
 }
@@ -167,6 +182,8 @@ void MainWindow::ftpCommandFinished(int commandId, bool error)
     {
         if (error)
         {
+            mLogStr += "connect " + ui->mHost->text() + "error \n";
+            ui->mLog->setText(mLogStr);
             QMessageBox::information(this, tr("FTP"),
                                      tr("Unable to connect to the FTP server ")
                                      .arg(ui->mHost->text()));
@@ -174,6 +191,8 @@ void MainWindow::ftpCommandFinished(int commandId, bool error)
             return;
         }
 
+        mLogStr += "connect " + ui->mHost->text() + "sccuess \n";
+        ui->mLog->setText(mLogStr);
         if (ui->mUser->text() == "" && ui->mPassword->text() == "")
             mFtp->login();
         else
@@ -202,6 +221,8 @@ void MainWindow::ftpCommandFinished(int commandId, bool error)
             return ;
         }
 
+        mLogStr += ui->mUser->text() + "      Login \n";
+        ui->mLog->setText(mLogStr);
         ui->mDownload->setEnabled(true);
         mFtp->cd("/");
         mFtp->list();
@@ -267,7 +288,7 @@ void MainWindow::on_mQuickConnection_clicked()
 
 void MainWindow::on_mDownload_clicked()
 {
-    long mFileSize = ui->mWebFileList->currentItem()->text(1).toLong();
+    long mFileSize = ui->mWebFileList->currentItem()->text(1).toLongLong();
     QString mHost = ui->mHost->text();
     QString mUser = ui->mUser->text();
     QString mPasswd = ui->mPassword->text();
@@ -298,11 +319,80 @@ void MainWindow::on_mDownload_clicked()
     //this->mDowloadFtp = new Ftp(mCharHost, mCharUser,mCharPasswd,mCharFileName, long mSize);
 
     //cout << "filename  " <<  (mFileName).toStdString() << endl;
+    QDateTime time = QDateTime::currentDateTime();//获取系统现在的时间
+    QString str = time.toString("yyyy-MM-dd hh:mm:ss");
+    QTreeWidgetItem *item = new QTreeWidgetItem;
+    item->setText(0, QString::number(mTaskNum));
+    item->setText(1, mFileName);
+    item->setText(2, QString::number(mFileSize));
+    item->setText(3, str);
+    item->setText(4, mFileName);
+    item->setText(5, "0%");
+    ui->mDetailed->addTopLevelItem(item);
+
 }
 
 void MainWindow::receiveData(char*p,int len)
 {
-    ui->mWebDir->setText(QString::number(len));
+    int i = 0;
+    QTreeWidgetItemIterator item(ui->mDetailed);
+
+    while (*item)
+    {
+             //if ((*it)->text(4) == itemText)
+             //   (*it)->setSelected(true);
+        if (mFileTask[i]->mDowloadFlag)
+        {
+             (*item)->setText(5, QString::number(mFileTask[i]->mProcess) + "%");
+        }
+        else
+        {
+            //cout << "i ==  " << i << "--------" << mFileTask[i]->mDowloadFlag << endl;
+            (*item)->setText(5, "pause");
+        }
+
+            ++item;
+            i++;
+    }
+
+    return ;
+    ui->mDetailed->clear();
+    for (int i = 0; i < this->mTaskNum; i++)
+    {
+        /*item->setText(4, urlInfo.lastModified().toString("MMM dd yyyy"));
+        QTreeWidgetItem *item = new QTreeWidgetItem;
+        item->setText(0, mFileTask[i]->mSrcFileName);
+        item->setText(1, QString::number(mFileTask[i]->mFileSize));
+        item->setText(3, mFileTask[i]->mDstFileName);
+        item->setText(4, QString::number(mFileTask[i]->mProcess) + "%");
+        ui->mDetailed->addTopLevelItem(item);*/
+
+        //cout << mFileTask[i]->mSrcFileName <<"       " << mFileTask[i]->mProcess << endl;
+        /*if (!ui->mDetailed->currentItem()) {
+            ui->mDetailed->setCurrentItem(ui->mDetailed->topLevelItem(0));
+            ui->mDetailed->setEnabled(true);
+        }*/
+
+    }
+    //ui->mWebDir->setText(QString::number(len));
+}
+
+void MainWindow::operateFile(QTreeWidgetItem *item, int column)
+{
+    //ui->mWebDir->setText(item->text(0));
+    //cout << "---------select" << item->text(0).toStdString() << endl;
+    mSelectTask = item->text(0).toInt();
+
+    if (this->mFileTask[mSelectTask - 1]->mDowloadFlag)
+    {
+        ui->mPause->setEnabled(true);
+        ui->mstart->setEnabled(false);
+    }
+    else
+    {
+        ui->mPause->setEnabled(false);
+        ui->mstart->setEnabled(true);
+    }
 }
 
 void MainWindow::saveConfig()
@@ -369,4 +459,40 @@ void MainWindow::loadConfig()
 void MainWindow::on_mSetting_clicked()
 {
     saveConfig();
+}
+
+void MainWindow::on_mstart_clicked()
+{
+    ui->mPause->setEnabled(true);
+    ui->mstart->setEnabled(false);
+    this->mFileTask[mSelectTask - 1]->mDowloadFlag = true;
+
+    if (mSelectTask)
+        this->mFileTask[mSelectTask - 1]->contin();
+
+}
+
+void MainWindow::on_mPause_clicked()
+{
+    int i = 0;
+
+    ui->mPause->setEnabled(false);
+    ui->mstart->setEnabled(true);
+
+    this->mFileTask[mSelectTask - 1]->mDowloadFlag = false;
+
+    if (mSelectTask)
+        this->mFileTask[mSelectTask - 1]->stop();
+
+    /*QTreeWidgetItemIterator item(ui->mDetailed);
+    while (*item)
+    {
+         if (i == mSelectTask - 1)
+        {
+            (*item)->setText(5, "pause");
+        }
+        ++item;
+        i++;
+    }*/
+
 }

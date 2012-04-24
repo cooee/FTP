@@ -33,37 +33,21 @@ FtpThread::FtpThread()
 
 FtpThread::FtpThread(char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile)
 {
-    printf("%s\n", mHost);
+    /*printf("%s\n", mHost);
     printf("%s\n", mUsername);
     printf("%s\n", mPwd);
-    printf("%s\n\n", mFile);
+    printf("%s\n\n", mFile);*/
 
+    mAlive = true;
     strncpy(this->mUser, mUsername, strlen(mUsername) + 1);
     strncpy(this->mPasswd, mPwd, strlen(mPwd) + 1);
     strncpy(mCurrentPath, mCurPath, strlen(mCurPath) + 1);
     strncpy(this->mFileName, mFile, strlen(mFile) + 1);
+    strncpy(this->mIp, mHost, strlen(mHost) + 1);
 
-    printf("%s\n", mUser);
-    printf("%s\n", mPasswd);
-    printf("%s\n", mFileName);
-
-    mServerAddr.sin_family = AF_INET;
-    if (inet_aton (mHost, &mServerAddr.sin_addr))
-    {
-        memcpy(mIp, mHost, strlen(mHost));
-    }
-    else
-      {
-        struct hostent *hp = gethostbyname (mHost);
-        if (!hp)
-          return ;
-
-        mServerAddr.sin_family = hp->h_addrtype;
-        if (hp->h_length > (int) sizeof (mServerAddr.sin_addr))
-          hp->h_length = sizeof (mServerAddr.sin_addr);
-
-        memcpy (&mServerAddr.sin_addr, hp->h_addr, hp->h_length);
-      }
+    cout << "mUse      " << mUser << endl;
+    cout << "mPasswd   " << mPasswd << endl;
+    cout << "mFileName " << mFileName << endl;
 }
 /*
 int FtpThread::connect_port(unsigned short port, const char *ip)
@@ -98,25 +82,10 @@ int FtpThread::ftpSendCommand(const char *cmd, const char *arg)
     int ret = 0, i = 0;
     char buf[BUF_LEN];
 
-    for (i = 0; cmd[i]; i++)
-    {
-            buf[i] = cmd[i];
-    }
-
-
-    if (arg !=NULL)
-    {
-            buf[i++] = ' ';
-            int j;
-            for (j = 0; arg[j]; j++)
-            {
-                    buf[i++] = arg[j];
-            }
-    }
-
-    buf[i++] = '\r';
-    buf[i++] = '\n';
-    buf[i] = '\0';
+    if (arg != NULL)
+            snprintf(buf, BUF_LEN, "%s %s\r\n", cmd, arg);
+    else
+            sprintf(buf, "%s\r\n", cmd);
 
     ret = send(mSockFd, buf, strlen(buf), 0);
     if (ret < 0)
@@ -133,8 +102,17 @@ int FtpThread::ftpSendCommand(const char *cmd, const char *arg)
     }
     buf[ret] = '\0';
 
+    if (!strncmp(buf, USER_PSWD_ERROR, 3))
+    {
+        ret = -1;
+    }
+    else if (!strncmp(buf, NO_SUCH_FILE, 3))
+    {
+        ret = -1;
+    }
+
     printf("%s\n", buf);
-    printf("tid = %lu, %s\n", pthread_self(), buf);
+    //printf("tid = %lu, %s\n", pthread_self(), buf);
 
     return ret;
 }
@@ -208,26 +186,37 @@ int FtpThread::ftpLogin()
     mSockFd = connect_port(mServerAddr);
     if (mSockFd < 0)
     {
-            return mSockFd;
+        return mSockFd;
     }
 
     ret = recv(mSockFd, buf, BUF_LEN, 0);
     buf[ret] = '\0';
     cout <<  buf << endl;
 
-    ret = ftpSendCommand("USER", this->mUser);
-    ret = ftpSendCommand("PASS", this->mPasswd);
-    //ret = ftpSendCommand(mSockFd, "SYST", NULL);
-    //ret = ftpSendCommand(mSockFd, "TYPE", "I");
+    if (this->mUser[0] != 0 && this->mPasswd[0] != '0')
+    {
+        ret = ftpSendCommand("USER", this->mUser);
+        ret = ftpSendCommand("PASS", this->mPasswd);
+        //ret = ftpSendCommand(mSockFd, "SYST", NULL);
+        //ret = ftpSendCommand(mSockFd, "TYPE", "I");
+    }
+    else
+    {
+        ret = ftpSendCommand("USER", "anonymous");
+        ret = ftpSendCommand("PASS", "123");
+        //ret = ftpSendCommand(mSockFd, "SYST", NULL);
+        //ret = ftpSendCommand(mSockFd, "TYPE", "I");
+    }
 
-    return mSockFd;
+    return ret;
 }
 
 void FtpThread::run()
 {
     int ret;
     char buf[BUF_LEN];
-    char FileNamePath[BUF_LEN];
+    char fileNamePath[BUF_LEN];
+    char dowFileName[BUF_LEN];
 
     int num = 0;
     while (0)
@@ -236,7 +225,33 @@ void FtpThread::run()
         sleep(2);
     }
 
-    mSockFd = ftpLogin();
+    mServerAddr.sin_family = AF_INET;
+    if (inet_aton (mIp, &mServerAddr.sin_addr))
+    {
+        cout << "Ip is error" << endl;
+    }
+    else
+    {
+        struct hostent *hp = gethostbyname (mIp);
+        if (!hp)
+        {
+             cout << "gethostbyname error" << endl;
+          return ;
+        }
+
+        mServerAddr.sin_family = hp->h_addrtype;
+        if (hp->h_length > (int) sizeof (mServerAddr.sin_addr))
+            hp->h_length = sizeof (mServerAddr.sin_addr);
+
+        memcpy (&mServerAddr.sin_addr, hp->h_addr, hp->h_length);
+      }
+
+    ret = ftpLogin();
+    if (ret < 0)
+    {
+        cout << "login failed" << endl;
+        return;
+    }
     mDataPort = getDataPort();
 
     mServerAddr.sin_port = htons(mDataPort);
@@ -244,23 +259,26 @@ void FtpThread::run()
     mDataFd = connect_port(mServerAddr);
 
     sprintf(buf, "%d", mOffset);
-    sprintf(FileNamePath, "%s/%s", this->mCurrentPath, this->mFileName);
+    sprintf(fileNamePath, "%s/%s", this->mCurrentPath, this->mFileName);
     ret = ftpSendCommand("REST", buf);
     //ret = ftpSendCommand("RETR", mFileName);
     //ret = ftpSendCommand("RETR", "/srv/ftp/test");
-    ret = ftpSendCommand("RETR", FileNamePath);
+    ret = ftpSendCommand("RETR", fileNamePath);
 
     //cout << "aaaaaaa" << FileNamePath << endl;
     // pthread_mutex_lock(&mFattr[i].lock);
-    mFileFd = open(mFileName, O_CREAT | O_RDWR, 0666);
+    sprintf(dowFileName, "/tmp/%s", mFileName);
+    mFileFd = open(dowFileName, O_CREAT | O_RDWR, 0666);
     lseek(mFileFd, mOffset, SEEK_SET);
 
     int len;
-    size_t curr_size = 0, size;
+    long long curr_size = 0, size;
     size = mDownloadsize;
 
     while (curr_size <= size)
     {
+        if (mAlive)
+        {
             len = mDownloadsize > BUF_LEN ? BUF_LEN : mDownloadsize;
             ret = recv(mDataFd, buf, len, 0);
             if (ret < 0)
@@ -280,9 +298,9 @@ void FtpThread::run()
             curr_size += ret;
 
             emit sendData(NULL,curr_size);
-            cout << 100 * curr_size  / size << endl;
             // printf("==current size = %lu size = %lu, %d%%\r==", curr_size, size, 100 * (curr_size * 1.0 / size));
             //printf("%d%%\t\r", 100 * curr_size  / size);
+        }
     }
     printf("\n");
     close(mFileFd);
@@ -297,11 +315,21 @@ void FtpThread::run()
     close(mSockFd);
 }
 
-int FtpThread::setFileAttr(int offset, size_t size, size_t downloadsize)
+int FtpThread::setFileAttr(int offset, long long size, long long downloadsize)
 {
     this->mOffset = offset;
     this->mSize = size;
     this->mDownloadsize = downloadsize;
+}
+
+void FtpThread::stop()
+{
+    this->mAlive = false;
+}
+
+void FtpThread::contin()
+{
+    this->mAlive = true;
 }
 
 #if 0

@@ -48,6 +48,7 @@ private slots:
      void cdToDirectory(QTreeWidgetItem *item, int column);
 
      void receiveData(char*p,int len);
+     void operateFile(QTreeWidgetItem*,int);
 
      void onSiteManagerClicked();
 
@@ -64,6 +65,10 @@ private slots:
 
      void on_mSetting_clicked();
 
+     void on_mstart_clicked();
+
+     void on_mPause_clicked();
+
 private:
     Ui::MainWindow *ui;
     void actionConnect();
@@ -72,9 +77,9 @@ private:
     void browse();
     void updateComboBox(QComboBox *comboBox);
 
-
     Dialog *mDialog;
-    QFileSystemModel *model;
+    QFileSystemModel *mModel;
+    QDateTime mDatatime;
 
     int mTaskNum;
     QFtp *mFtp;
@@ -82,6 +87,9 @@ private:
     QHash<QString, bool> mIsDirectory;
     //list<FtpDownload > mFileTask;
     FtpDownload* mFileTask[TASK_MAX];
+    int mSelectTask;
+    list<QString> mLogList;
+    QString mLogStr;
 
      void saveConfig();
      void loadConfig();

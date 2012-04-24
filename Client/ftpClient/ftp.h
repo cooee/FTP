@@ -15,6 +15,9 @@
 
 #define FTP_PORT 21
 #define BUF_LEN 1024
+#define USER_PSWD_ERROR "530"
+#define NO_SUCH_FILE    "550"
+
 #define MAX_THREAD_NUM 1
 
 #include <iostream>
@@ -32,15 +35,17 @@ public:
     int getSize(int sockfd, const char *filename);
     int ftpLogin();
     int ftpSendCommand(const char *cmd, const char *arg);
-    int setFileAttr(int offset, size_t size, size_t downloadsize);
+    int setFileAttr(int offset, long long size, long long downloadsize);
+    void stop();
+    void contin();
 
 protected:
     void run();
 
- private:
+private:
     int mSockFd;
     int mDataFd;
-	int mFileFd;
+    int mFileFd;
     unsigned short mDataPort;
     char mUser[BUF_LEN];
     char mPasswd[BUF_LEN];
@@ -49,15 +54,17 @@ protected:
     char mCurrentPath[BUF_LEN];
     struct sockaddr_in mServerAddr;
 
-    size_t mSize;
-    size_t mDownloadsize;
+    long long mSize;
+    long long mDownloadsize;
     int mOffset;
 
-    pthread_mutex_t lock;
-    pthread_t tid;
+     bool mAlive;
+     pthread_mutex_t lock;
+     pthread_t tid;
 
 signals:
-    void sendData(char*p,int len);
+
+    void sendData(char*p,long long size);
 };
 
 class Ftp
