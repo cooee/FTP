@@ -128,7 +128,7 @@ void MainWindow::onSiteManagerClicked()
 
 void MainWindow::on_mSiteManager_clicked()
 {
-
+//    mDialog
 }
 
 QComboBox *MainWindow::createComboBox(const QString &text)

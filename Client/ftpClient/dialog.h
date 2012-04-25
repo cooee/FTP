@@ -2,7 +2,8 @@
 #define DIALOG_H
 
 #include <QDialog>
-
+#include <QListWidgetItem>
+#include <QDebug>
 namespace Ui {
     class Dialog;
 }
@@ -17,6 +18,11 @@ public:
 
 private:
     Ui::Dialog *ui;
-};
+    QListWidgetItem *mItem;
+private slots:
+    void on_mAdd_clicked();
+    void on_mDelete_clicked();
+    void on_mListWidget_itemClicked(QListWidgetItem *item);
+    };
 
 #endif // DIALOG_H
