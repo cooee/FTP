@@ -11,7 +11,7 @@ class FtpDownload: public QObject
 public:
     friend class MainWindow;
     FtpDownload();
-    FtpDownload(char *mHost, char *mUser, char *mPasswd, char *mCurPath, char *mFileName, long long mSize);
+    FtpDownload(char *mHost, char *mUser, char *mPasswd, char *mCurPath, char *mFileName, char *dstFilename, long long mSize);
     void stop();
     void contin();
 
@@ -23,6 +23,7 @@ private:
     int mThreadNum;
     bool mDowloadFlag;
     int mFinish;
+    bool mFinishFlag;
     char mIp[BUF_LEN];
     struct sockaddr_in mServerAddr;
 
@@ -31,9 +32,12 @@ private:
 
 signals:
     void sendData(char*p,int len);
+    void sendSave();
 
 private slots:
     void receiveData(char*p,long long len);
+    void receiveSave();
+    void receiveFinish();
 };
 
 #endif // FTPDOWNLOAD_H

@@ -32,6 +32,9 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+protected:
+    void closeEvent(QCloseEvent *event);
+
 private slots:
 //     void newFile();
      void open();
@@ -46,6 +49,7 @@ private slots:
      void ftpCommandFinished(int commandId, bool error);
      void addToFileList(const QUrlInfo &urlInfo);
      void cdToDirectory(QTreeWidgetItem *item, int column);
+     void cdLocalDir(QModelIndex item);
 
      void receiveData(char*p,int len);
      void operateFile(QTreeWidgetItem*,int);
@@ -69,6 +73,9 @@ private slots:
 
      void on_mPause_clicked();
 
+signals:
+    void sendSaveFile();
+
 private:
     Ui::MainWindow *ui;
     void actionConnect();
@@ -84,6 +91,7 @@ private:
     int mTaskNum;
     QFtp *mFtp;
     QString mCurrentPath;
+    QString mLocalPath;
     QHash<QString, bool> mIsDirectory;
     //list<FtpDownload > mFileTask;
     FtpDownload* mFileTask[TASK_MAX];

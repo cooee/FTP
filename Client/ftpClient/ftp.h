@@ -29,7 +29,7 @@ class FtpThread : public QThread
 
 public:
     FtpThread();
-    FtpThread(char *mHost, char *mUser, char *mCurPath, char *mPasswd, char *mFileName);
+    FtpThread(char *mHost, char *mUser, char *mCurPath, char *mPasswd, char *mFileName, char *mDowFileNmae);
     //int connect_port(unsigned short port, const char *ip);
     unsigned short getDataPort();
     int getSize(int sockfd, const char *filename);
@@ -51,6 +51,7 @@ private:
     char mPasswd[BUF_LEN];
     char mIp[BUF_LEN];
     char mFileName[BUF_LEN];
+    char mDownFileName[BUF_LEN];
     char mCurrentPath[BUF_LEN];
     struct sockaddr_in mServerAddr;
 
@@ -59,12 +60,18 @@ private:
     int mOffset;
 
      bool mAlive;
+     bool mFinish;
      pthread_mutex_t lock;
      pthread_t tid;
+
+private slots:
+     void receiveSave();
 
 signals:
 
     void sendData(char*p,long long size);
+    void sendFinish();
+
 };
 
 class Ftp

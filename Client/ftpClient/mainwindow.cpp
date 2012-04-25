@@ -16,9 +16,17 @@ MainWindow::MainWindow(QWidget *parent) :
     mSelectTask = 0;
     mLogList.clear();
     mLogStr = "";
+	mLocalPath = "/tmp";
 
     connect(ui->mDetailed, SIGNAL(itemClicked(QTreeWidgetItem *, int)),
                 this, SLOT(operateFile(QTreeWidgetItem*,int)));
+	connect(ui->mLocalFileList, SIGNAL(doubleClicked(QModelIndex)),
+                this, SLOT(cdLocalDir(QModelIndex)));
+
+   /* connect(ui->mLocalFileList, SIGNAL(itemClicked(QTreeWidgetItem *, int)),
+                this, SLOT(cdLocalDir(QTreeWidgetItem*,int)));*/
+
+
 
 //    QSplitter *h1Splitter = new QSplitter;
 //    QSplitter *h2Splitter = new QSplitter;
@@ -43,12 +51,13 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
+
 void MainWindow::actionConnect()
- {
+{
        ui->actionOpen->setShortcut(QKeySequence("Ctrl+o"));
        ui->actionOpen->setStatusTip("open a file");//设置状态栏...
        connect( ui->actionOpen, SIGNAL(activated()) , this, SLOT( open() ) );
- }
+}
 void MainWindow::open()
  {
      QString fileName = QFileDialog::getOpenFileName(this);
@@ -98,6 +107,7 @@ void MainWindow::initView()
     connect(ui->mSiteManager, SIGNAL(clicked()), this, SLOT(onSiteManagerClicked()));
 
     createComboBox("/home");
+this->mLocalPath = "/home";
     mDialog = new Dialog;
 
     ui->mDownload->setEnabled(false);
@@ -106,6 +116,7 @@ void MainWindow::initView()
     ui->mPause->setEnabled(false);
     ui->mUpload->setEnabled(false);
     ui->mReconnect->setEnabled(false);
+ui->mUpDir->setEnabled(false);
 
 
 //    ui->mHost->setText("127.0.0.1");
@@ -260,12 +271,22 @@ void MainWindow::cdToDirectory(QTreeWidgetItem *item, int /*column*/)
         //ui->mWebFileList->clearFocus();
         mIsDirectory.clear();
         mCurrentPath += "/" + name;
+		this->mLogStr += "cd " + name + "\n";
+        ui->mLog->setText(mLogStr);
+
         mFtp->cd(mCurrentPath);
         mFtp->list();
 
         //cout << (mCurrentPath.toStdString()) << endl;
         return;
     }
+}
+
+void MainWindow::cdLocalDir(QModelIndex item)
+{
+    QModelIndex index = ui->mLocalFileList->currentIndex();
+    QString path = mModel->filePath(index);
+    cout << path.toStdString() << endl;
 }
 
 void MainWindow::on_mQuickConnection_clicked()
@@ -288,6 +309,13 @@ void MainWindow::on_mQuickConnection_clicked()
 
 void MainWindow::on_mDownload_clicked()
 {
+	QMessageBox msgBox;
+    QString downFile, tmpDownFile;
+    QModelIndex index = ui->mLocalFileList->currentIndex();
+    mLocalPath = mModel->filePath(index);
+
+    mLocalPath = "/tmp";
+
     long mFileSize = ui->mWebFileList->currentItem()->text(1).toLongLong();
     QString mHost = ui->mHost->text();
     QString mUser = ui->mUser->text();
@@ -295,6 +323,53 @@ void MainWindow::on_mDownload_clicked()
     //QString mFileName = (mCurrentPath  + "/") + ui->mWebFileList->currentItem()->text(0);
     QString mFileName = ui->mWebFileList->currentItem()->text(0);
     //QString mFileName = "test";
+	downFile = mLocalPath + "/" + mFileName;
+   tmpDownFile = downFile + ".inf";
+
+    if (mLocalPath == "" || QFileInfo(mLocalPath).isFile())
+    {
+        QMessageBox::information(this, tr("FTP"), tr("Select Dowload Dir"));
+        return ;
+    }
+
+    if (QFile::exists(tmpDownFile)) {
+         msgBox.setText("The File : " + downFile + "  has been download not finish.");
+         msgBox.setInformativeText("What are you want to do?");
+         QPushButton *continueButton = msgBox.addButton(tr("Continue"), QMessageBox::ActionRole);
+         QPushButton *reDowloadButton = msgBox.addButton(tr("reDowload"), QMessageBox::ActionRole);
+         QPushButton *CancleButton = msgBox.addButton(tr("Cancle"), QMessageBox::ActionRole);
+
+         msgBox.exec();
+         if (msgBox.clickedButton() == continueButton)
+         {
+              cout << "continue" << endl;
+         }
+         else if (msgBox.clickedButton() == reDowloadButton)
+         {
+             QFile::remove(tmpDownFile);
+              cout << "reDowLoad" << endl;
+         }
+         else if (msgBox.clickedButton() == CancleButton)
+         {
+              cout << "cancle" << endl;
+              return ;
+         }
+    }
+    else if (QFile::exists(downFile)) {
+        msgBox.setText("The File : " + downFile + "  is exists");
+        msgBox.setInformativeText("What are you want to do?");
+        QPushButton *reDowloadButton = msgBox.addButton(tr("reDowload"), QMessageBox::ActionRole);
+        QPushButton *CancleButton = msgBox.addButton(tr("Cancle"), QMessageBox::ActionRole);
+
+        msgBox.exec();
+        if (msgBox.clickedButton() == CancleButton)
+        {
+             cout << "Cancle" << endl;
+             return ;
+        }
+    }
+
+    //return ;
 
     QByteArray mQbHost = mHost.toLatin1();
     char *mCharHost = mQbHost.data();
@@ -311,11 +386,17 @@ void MainWindow::on_mDownload_clicked()
     QByteArray mQbCurrent = this->mCurrentPath.toLatin1();
     char *mCharCurrentPath = mQbCurrent.data();
 
-    FtpDownload *mDowloadFtp = new FtpDownload(mCharHost, mCharUser,mCharPasswd,mCharCurrentPath,mCharFileName, mFileSize);
+   QByteArray mQbDownFile = downFile.toLatin1();
+    char *mCharDowFIle = mQbDownFile.data();
+
+    FtpDownload *mDowloadFtp = new FtpDownload(mCharHost, mCharUser,mCharPasswd,mCharCurrentPath,mCharFileName, mCharDowFIle, mFileSize);
     this->mFileTask[this->mTaskNum] = mDowloadFtp;
     //this->mFileTask.push_back(mDowloadFtp);
 
-    connect(mFileTask[mTaskNum++],SIGNAL(sendData(char*,int )),this,SLOT(receiveData(char*,int )));
+	connect(mFileTask[mTaskNum],SIGNAL(sendData(char*,int )),this,SLOT(receiveData(char*,int )));
+    connect(this,SIGNAL(sendSaveFile()),mFileTask[mTaskNum++],SLOT(receiveSave()));
+    //connect(this,SIGNAL(sendSave()),mFileTask[mTaskNum++],SLOT(receiveSave()));
+
     //this->mDowloadFtp = new Ftp(mCharHost, mCharUser,mCharPasswd,mCharFileName, long mSize);
 
     //cout << "filename  " <<  (mFileName).toStdString() << endl;
@@ -496,3 +577,19 @@ void MainWindow::on_mPause_clicked()
     }*/
 
 }
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    for (int i = 0; i < this->mTaskNum; i++)
+    {
+        if (!mFileTask[i]->mFinishFlag)
+        {
+            mFileTask[i]->stop();
+            //connect(this,SIGNAL(sendSaveFile()),mFileTask[i],SLOT(receiveSave()));
+            emit sendSaveFile();
+        }
+    }
+    //sleep(2);
+    cout << "save temfile" << endl;
+}
+

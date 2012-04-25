@@ -31,7 +31,7 @@ FtpThread::FtpThread()
 {
 }
 
-FtpThread::FtpThread(char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile)
+FtpThread::FtpThread(char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile, char *mDowFileName)
 {
     /*printf("%s\n", mHost);
     printf("%s\n", mUsername);
@@ -39,10 +39,13 @@ FtpThread::FtpThread(char *mHost, char *mUsername, char *mPwd, char *mCurPath, c
     printf("%s\n\n", mFile);*/
 
     mAlive = true;
+    mFinish = false;
+
     strncpy(this->mUser, mUsername, strlen(mUsername) + 1);
     strncpy(this->mPasswd, mPwd, strlen(mPwd) + 1);
     strncpy(mCurrentPath, mCurPath, strlen(mCurPath) + 1);
     strncpy(this->mFileName, mFile, strlen(mFile) + 1);
+    strncpy(this->mDownFileName, mDowFileName, strlen(mDowFileName) + 1);
     strncpy(this->mIp, mHost, strlen(mHost) + 1);
 
     cout << "mUse      " << mUser << endl;
@@ -197,15 +200,15 @@ int FtpThread::ftpLogin()
     {
         ret = ftpSendCommand("USER", this->mUser);
         ret = ftpSendCommand("PASS", this->mPasswd);
-        //ret = ftpSendCommand(mSockFd, "SYST", NULL);
-        //ret = ftpSendCommand(mSockFd, "TYPE", "I");
+        ret = ftpSendCommand("SYST", NULL);
+        ret = ftpSendCommand("TYPE", "I");
     }
     else
     {
         ret = ftpSendCommand("USER", "anonymous");
         ret = ftpSendCommand("PASS", "123");
-        //ret = ftpSendCommand(mSockFd, "SYST", NULL);
-        //ret = ftpSendCommand(mSockFd, "TYPE", "I");
+        ret = ftpSendCommand("SYST", NULL);
+        ret = ftpSendCommand("TYPE", "I");
     }
 
     return ret;
@@ -216,19 +219,12 @@ void FtpThread::run()
     int ret;
     char buf[BUF_LEN];
     char fileNamePath[BUF_LEN];
-    char dowFileName[BUF_LEN];
-
-    int num = 0;
-    while (0)
-    {
-        cout << "down run()" << num++ << endl;
-        sleep(2);
-    }
 
     mServerAddr.sin_family = AF_INET;
-    if (inet_aton (mIp, &mServerAddr.sin_addr))
+    if (inet_aton (mIp, &mServerAddr.sin_addr) == 0)
     {
-        cout << "Ip is error" << endl;
+        cout << "Ip is error :"  << mIp << endl;
+        return ;
     }
     else
     {
@@ -267,8 +263,8 @@ void FtpThread::run()
 
     //cout << "aaaaaaa" << FileNamePath << endl;
     // pthread_mutex_lock(&mFattr[i].lock);
-    sprintf(dowFileName, "/tmp/%s", mFileName);
-    mFileFd = open(dowFileName, O_CREAT | O_RDWR, 0666);
+    //sprintf(dowFileName, "/tmp/%s", mFileName);
+    mFileFd = open(this->mDownFileName, O_CREAT | O_RDWR, 0666);
     lseek(mFileFd, mOffset, SEEK_SET);
 
     int len;
@@ -297,12 +293,12 @@ void FtpThread::run()
             mDownloadsize -= ret;
             curr_size += ret;
 
-            emit sendData(NULL,curr_size);
+            emit sendData(NULL,mOffset);
+            //emit sendData(NULL,curr_size);
             // printf("==current size = %lu size = %lu, %d%%\r==", curr_size, size, 100 * (curr_size * 1.0 / size));
             //printf("%d%%\t\r", 100 * curr_size  / size);
         }
     }
-    printf("\n");
     close(mFileFd);
     // pthread_mutex_unlock(&mFattr[i].lock);
 
@@ -313,6 +309,9 @@ void FtpThread::run()
     // ftp_logout(mSockFd);
     close(mDataFd);
     close(mSockFd);
+
+    mFinish = true;
+    emit sendFinish();
 }
 
 int FtpThread::setFileAttr(int offset, long long size, long long downloadsize)
@@ -332,35 +331,29 @@ void FtpThread::contin()
     this->mAlive = true;
 }
 
-#if 0
-void sig_act(int signum)
+void FtpThread::receiveSave()
 {
-	int i;
-	char buf[BUF_LEN];
-	int mFileFd;
+    int fd;
+    char buf[BUF_LEN];
 
-	sprintf(buf, "%s.inf", fattr[0].filename);
+    if (!this->mFinish)
+    {
+        cout << "FtpThread save" << endl;
 
-	mFileFd = open(buf, O_CREAT | O_RDWR, 0666);
+        sprintf(buf, "%s.inf", this->mDownFileName);
 
-	if (mFileFd < 0)
-	{
-		perror("open()");
-		exit(0);
-	}
+        fd = open(buf, O_CREAT | O_RDWR, 0666);
 
-	for (i = 0; i < MAX_THREAD_NUM; i++)
-	{
-		printf("tid = %lu, offset = %d, download = %d\n", fattr[i].tid, fattr[i].offset, fattr->download_size);
-		write(mFileFd, &(fattr[i].offset), sizeof(int));
-		write(mFileFd, &(fattr[i].download_size), sizeof(int));
-	}
+        if (fd < 0)
+        {
+                perror("open()");
+               return ;
+        }
+        write(fd, &(this->mOffset), sizeof(int));
+        write(fd, &(this->mDownloadsize), sizeof(int));
+        cout << "save" << this->mOffset << endl;
+        cout << "save" << this->mDownloadsize << endl;
 
-	close(mFileFd);
-	exit(1);
+        close(fd);
+    }
 }
-#endif
-
-
-
-
