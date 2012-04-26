@@ -31,7 +31,7 @@ FtpThread::FtpThread()
 {
 }
 
-FtpThread::FtpThread(char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile, char *mDowFileName)
+FtpThread::FtpThread(int pid, char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile, char *mDowFileName)
 {
     /*printf("%s\n", mHost);
     printf("%s\n", mUsername);
@@ -40,6 +40,7 @@ FtpThread::FtpThread(char *mHost, char *mUsername, char *mPwd, char *mCurPath, c
 
     mAlive = true;
     mFinish = false;
+    mPid = pid;
 
     strncpy(this->mUser, mUsername, strlen(mUsername) + 1);
     strncpy(this->mPasswd, mPwd, strlen(mPwd) + 1);
@@ -221,10 +222,10 @@ void FtpThread::run()
     char fileNamePath[BUF_LEN];
 
     mServerAddr.sin_family = AF_INET;
-    if (inet_aton (mIp, &mServerAddr.sin_addr) == 0)
+    if (inet_aton (mIp, &mServerAddr.sin_addr))
     {
         cout << "Ip is error :"  << mIp << endl;
-        return ;
+        //return ;
     }
     else
     {
@@ -268,10 +269,11 @@ void FtpThread::run()
     lseek(mFileFd, mOffset, SEEK_SET);
 
     int len;
-    long long curr_size = 0, size;
+    long long size;
+    mCurrSize = 0;
     size = mDownloadsize;
 
-    while (curr_size <= size)
+    while (mCurrSize <= size)
     {
         if (mAlive)
         {
@@ -291,10 +293,10 @@ void FtpThread::run()
 
             mOffset += ret;
             mDownloadsize -= ret;
-            curr_size += ret;
-
-            emit sendData(NULL,mOffset);
-            //emit sendData(NULL,curr_size);
+            mCurrSize += ret;
+            //mAlreadyDowSize += curr_size;
+            //emit sendData(mPid,mOffset);
+            emit sendData(mPid,mCurrSize + mAlreadyDowSize);
             // printf("==current size = %lu size = %lu, %d%%\r==", curr_size, size, 100 * (curr_size * 1.0 / size));
             //printf("%d%%\t\r", 100 * curr_size  / size);
         }
@@ -314,10 +316,11 @@ void FtpThread::run()
     emit sendFinish();
 }
 
-int FtpThread::setFileAttr(int offset, long long size, long long downloadsize)
+int FtpThread::setFileAttr(long long offset, long long size, long long alreadydowsize, long long downloadsize)
 {
     this->mOffset = offset;
     this->mSize = size;
+    this->mAlreadyDowSize = alreadydowsize;
     this->mDownloadsize = downloadsize;
 }
 
@@ -331,9 +334,12 @@ void FtpThread::contin()
     this->mAlive = true;
 }
 
+
 void FtpThread::receiveSave()
 {
-    int fd;
+
+    this->mAlreadyDowSize += this->mCurrSize;
+   /* int fd;
     char buf[BUF_LEN];
 
     if (!this->mFinish)
@@ -355,5 +361,5 @@ void FtpThread::receiveSave()
         cout << "save" << this->mDownloadsize << endl;
 
         close(fd);
-    }
+    }*/
 }

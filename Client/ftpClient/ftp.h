@@ -18,7 +18,7 @@
 #define USER_PSWD_ERROR "530"
 #define NO_SUCH_FILE    "550"
 
-#define MAX_THREAD_NUM 1
+//#define MAX_THREAD_NUM 1
 
 #include <iostream>
 using namespace std;
@@ -28,14 +28,15 @@ class FtpThread : public QThread
     Q_OBJECT
 
 public:
+    friend class FtpDownload;
     FtpThread();
-    FtpThread(char *mHost, char *mUser, char *mCurPath, char *mPasswd, char *mFileName, char *mDowFileNmae);
+    FtpThread(int pid, char *mHost, char *mUser, char *mCurPath, char *mPasswd, char *mFileName, char *mDowFileNmae);
     //int connect_port(unsigned short port, const char *ip);
     unsigned short getDataPort();
     int getSize(int sockfd, const char *filename);
     int ftpLogin();
     int ftpSendCommand(const char *cmd, const char *arg);
-    int setFileAttr(int offset, long long size, long long downloadsize);
+    int setFileAttr(long long offset, long long size, long long alreadydowsize, long long downloadsize);
     void stop();
     void contin();
 
@@ -46,6 +47,7 @@ private:
     int mSockFd;
     int mDataFd;
     int mFileFd;
+    int mPid;
     unsigned short mDataPort;
     char mUser[BUF_LEN];
     char mPasswd[BUF_LEN];
@@ -57,7 +59,9 @@ private:
 
     long long mSize;
     long long mDownloadsize;
-    int mOffset;
+    long long mOffset;
+    long long mAlreadyDowSize;
+    long long mCurrSize;
 
      bool mAlive;
      bool mFinish;
@@ -69,7 +73,7 @@ private slots:
 
 signals:
 
-    void sendData(char*p,long long size);
+    void sendData(int id,long long size);
     void sendFinish();
 
 };

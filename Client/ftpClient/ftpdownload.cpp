@@ -7,7 +7,8 @@ FtpDownload::FtpDownload()
 FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile, char *mDowFilename, long long mSize)
 {
     int i;
-    int downloadsize, offset;
+    long long downloadsize, offset, alreadydowsize;
+    //int downloadsize, offset;
     int info_fd;
     char tmpname[BUF_LEN];
     //char trans_filename[BUF_LEN];
@@ -15,6 +16,7 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
     mDowloadFlag = true;
     mFinish = 0;
     mFinishFlag = false;
+    mThreadTotalSize = 0;
 
     strncpy(mSrcFileName, mFile, strlen(mFile) + 1);
     strncpy(mDstFileName, mDowFilename, strlen(mDowFilename) + 1);
@@ -33,35 +35,41 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
                 downloadsize = mSize / THREADNUM;
                 offset = i * downloadsize;
 
-                FtpThread *thread = new FtpThread(mHost, mUsername, mPwd,mCurPath, mFile, mDstFileName);
+                FtpThread *thread = new FtpThread(i, mHost, mUsername, mPwd,mCurPath, mFile, mDstFileName);
                 mThread[i] = thread;
-                mThread[i]->setFileAttr(offset, mSize, downloadsize);
+                mThread[i]->setFileAttr(offset, mSize, 0, downloadsize);
+                cout << "offset" << offset << endl;
+                cout << "downloadsize" << downloadsize << endl;
 
             }
 
             offset = i * (mSize / THREADNUM);
             downloadsize = mSize - offset;
-            FtpThread *thread = new FtpThread(mHost, mUsername, mPwd, mCurPath, mFile, mDstFileName);
+            FtpThread *thread = new FtpThread(i, mHost, mUsername, mPwd, mCurPath, mFile, mDstFileName);
             mThread[i] = thread;
-            mThread[i]->setFileAttr(offset, mSize, downloadsize);
+            mThread[i]->setFileAttr(offset, mSize, 0, downloadsize);
+
+            cout << "offset" << offset << endl;
+            cout << "downloadsize" << downloadsize << endl;
+            //return ;
 
     }
     else
     {
             cout << "Continue loading..." << endl;
             cout << tmpname << endl;
-            cout << info_fd << endl;
-            cout << THREADNUM << endl;
-             //read(info_fd, &(offset), sizeof(long long));
-           // return ;
-           // for (i = 0; i < THREADNUM; i++)
+            //cout << info_fd << endl;
+            //cout << THREADNUM << endl;
+            // return ;
+            for (i = 0; i < THREADNUM; i++)
             {
-                read(info_fd, &(offset), sizeof(int));
-                read(info_fd, &(downloadsize), sizeof(int));
+                read(info_fd, &(offset), sizeof(long long));
+                read(info_fd, &(alreadydowsize), sizeof(long long));
+                read(info_fd, &(downloadsize), sizeof(long long));
 
-                FtpThread *thread = new FtpThread(mHost, mUsername, mPwd, mCurPath, mFile, mDstFileName);
+                FtpThread *thread = new FtpThread(i, mHost, mUsername, mPwd, mCurPath, mFile, mDstFileName);
                 mThread[i] = thread;
-                //mThread[i]->setFileAttr(offset, mSize, downloadsize);
+                mThread[i]->setFileAttr(offset, mSize, alreadydowsize, downloadsize);
                 cout << offset << endl;
                 cout << "downloadsize" << downloadsize << endl;
 
@@ -70,12 +78,12 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
             }
 
             close(info_fd);
-            return ;
+            //return ;
     }
 
     for (i = 0; i < THREADNUM ;i++)
     {
-        connect(mThread[i],SIGNAL(sendData(char*,long long )),this,SLOT(receiveData(char*,long long )));
+        connect(mThread[i],SIGNAL(sendData(int,long long )),this,SLOT(receiveData(int,long long )));
         connect(this,SIGNAL(sendSave()), mThread[i],SLOT(receiveSave()));
         mThread[i]->start();
     }
@@ -83,24 +91,63 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
     this->mThreadNum = i;
 }
 
-void FtpDownload::receiveData(char*p,long long len)
+void FtpDownload::receiveData(int pid,long long len)
 {
-    mProcess = 100 * len / this->mFileSize;
-   emit sendData(NULL,mProcess);
+    this->mTreadhDowloadSize[pid] = len;
+
+    for (int i = 0; i < THREADNUM; i++)
+    {
+        this->mThreadTotalSize += this->mTreadhDowloadSize[i];
+    }
+    mProcess = 100 * mThreadTotalSize / this->mFileSize;
+    emit sendData(NULL, mProcess);
+    mThreadTotalSize = 0;
    // emit sendData(NULL,len);
 }
 
 void FtpDownload::receiveSave()
 {
+
+    int fd;
+    char buf[BUF_LEN];
+
+    emit sendSave();
+    if (!this->mFinishFlag)
+    {
+
+        sprintf(buf, "%s.inf", this->mDstFileName);
+        fd = open(buf, O_CREAT | O_RDWR, 0666);
+
+        if (fd < 0)
+        {
+                perror("open()");
+               return ;
+        }
+        for (int i = 0; i < THREADNUM; i++)
+        {
+            write(fd, &(this->mThread[i]->mOffset), sizeof(long long));
+             write(fd, &(this->mThread[i]->mAlreadyDowSize), sizeof(long long));
+            write(fd, &(this->mThread[i]->mDownloadsize), sizeof(long long));
+            cout << "save" << this->mThread[i]->mOffset << endl;
+            cout << "save" << this->mThread[i]->mAlreadyDowSize << endl;
+            cout << "save" << this->mThread[i]->mDownloadsize << endl;
+        }
+
+        close(fd);
+    }
+
+    cout << "FtpDownload save" << endl;
+    /*
     if (!this->mFinishFlag);
     {
-        for (int i = 0; i < THREADNUM; i++)
+       // for (int i = 0; i < THREADNUM; i++)
         {
            //connect(this,SIGNAL(sendSave()), mThread[i],SLOT(receiveSave()));
            emit sendSave();
         }
     }
     cout << "FtpDownload save" << endl;
+    */
 }
 
 void FtpDownload::receiveFinish()

@@ -309,7 +309,7 @@ void MainWindow::on_mQuickConnection_clicked()
 
 void MainWindow::on_mDownload_clicked()
 {
-	QMessageBox msgBox;
+    QMessageBox msgBox;
     QString downFile, tmpDownFile;
     QModelIndex index = ui->mLocalFileList->currentIndex();
     mLocalPath = mModel->filePath(index);
@@ -580,6 +580,29 @@ void MainWindow::on_mPause_clicked()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    /*QMessageBox msgBox;
+
+    for (int i = 0; i < this->mTaskNum; i++)
+    {
+        if (!mFileTask[i]->mFinishFlag)
+        {
+            msgBox.setText("The File is Dowloading.......");
+            msgBox.setInformativeText("What are you want to do?");
+            QPushButton *reDowloadButton = msgBox.addButton(tr("close"), QMessageBox::ActionRole);
+            QPushButton *CancleButton = msgBox.addButton(tr("Cancle"), QMessageBox::ActionRole);
+
+            msgBox.exec();
+            if (msgBox.clickedButton() == CancleButton)
+            {
+                 cout << "Cancle" << endl;
+                 return ;
+            }
+            else {
+                break;
+            }
+        }
+    }*/
+
     for (int i = 0; i < this->mTaskNum; i++)
     {
         if (!mFileTask[i]->mFinishFlag)

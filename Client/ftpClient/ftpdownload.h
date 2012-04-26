@@ -2,7 +2,7 @@
 #define FTPDOWNLOAD_H
 #include "ftp.h"
 #define MAX_THREAD 10
-#define THREADNUM 1
+#define THREADNUM 2
 
 class FtpDownload: public QObject
 {
@@ -25,6 +25,8 @@ private:
     int mFinish;
     bool mFinishFlag;
     char mIp[BUF_LEN];
+    long long mTreadhDowloadSize[BUF_LEN];
+    long long mThreadTotalSize;
     struct sockaddr_in mServerAddr;
 
     //list<FtpThread* > mThread;
@@ -35,7 +37,7 @@ signals:
     void sendSave();
 
 private slots:
-    void receiveData(char*p,long long len);
+    void receiveData(int pid,long long len);
     void receiveSave();
     void receiveFinish();
 };
