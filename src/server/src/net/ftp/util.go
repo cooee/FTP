@@ -2,7 +2,9 @@ package ftp
 
 import (
 	"fmt"
+	"os/exec"
 	"runtime"
+	"strings"
 	"unsafe"
 )
 
@@ -40,4 +42,14 @@ func AuthPasswd(name string, passwd string) bool {
 	}
 
 	return true
+}
+
+func cmd(name string, arg ...string) ([]byte, error) {
+	command := exec.Command(name, arg...)
+	output, err := command.Output()
+	if err != nil {
+		return nil, err
+	}
+	output = []byte(strings.Replace(string(output), "\n", "\r\n", -1))
+	return output, nil
 }

@@ -52,28 +52,40 @@ func NotFoundHandler() Handler {
 }
 
 type DataConn struct {
+	mode       string
 	remoteAddr string
+	ls         *net.TCPListener
 	conn       *net.TCPConn
 	reader     *bufio.Reader
 	writer     *bufio.Writer
 }
 
-func NewDataConn(addr string) *DataConn {
-	return &DataConn{remoteAddr: addr}
+func NewDataConn(arg interface{}, mode string) *DataConn {
+	switch mode {
+	case "ACTIVE":
+		return &DataConn{remoteAddr: arg.(string), mode: mode}
+	case "PASSIVE":
+		return &DataConn{ls: arg.(*net.TCPListener), mode: mode}
+	}
+	return nil
 }
 
 func (d *DataConn) Close() {
+	if d.writer != nil {
+		d.writer.Flush()
+		d.writer = nil
+	}
 	if d.conn != nil {
 		d.conn.Close()
+		d.conn = nil
 	}
 }
 
 type Response struct {
-	status           int
-	closerAfterReply bool
-	written          int64
-	conn             *Conn
-	req              *Request
+	closeAfterReply bool
+	written         int64
+	conn            *Conn
+	req             *Request
 }
 
 func (r *Response) WriteData(buf []byte) (int, error) {
@@ -94,8 +106,60 @@ func (r *Response) WriteData(buf []byte) (int, error) {
 	return n, err
 }
 
-func (r *Response) initDataConn(addr string) {
-	r.conn.data = NewDataConn(addr)
+func (r *Response) serveFile(content io.ReadSeeker, size int64) {
+	switch r.getTransferMode() {
+	case "BINARY":
+		io.CopyN(r.conn.data.writer, content, size)
+		r.conn.data.writer.Flush()
+	case "ASCII":
+		reader := bufio.NewReader(content)
+		for {
+			line, prefix, err := reader.ReadLine()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				// deal with err
+				break
+			}
+			_, err = r.WriteData(line)
+			if prefix {
+				continue
+			}
+			io.WriteString(r.conn.data.writer, "\r\n")
+		}
+	}
+}
+
+func (r *Response) receiveFile(content io.WriteSeeker) {
+	switch r.getTransferMode() {
+	case "BINARY":
+		io.Copy(content, r.conn.data.reader)
+	case "ASCII":
+		for {
+			line, err := r.conn.data.reader.ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				// deal with err
+				break
+			}
+			io.WriteString(content, strings.Replace(line, "\r", "", -1))
+		}
+	}
+}
+
+func (r *Response) setTransferMode(mode string) {
+	r.conn.transMode = mode
+}
+
+func (r *Response) getTransferMode() string {
+	return r.conn.transMode
+}
+
+func (r *Response) initDataConn(arg interface{}, mode string) {
+	r.conn.data = NewDataConn(arg, mode)
 }
 
 func (r *Response) getDataConn() *DataConn {
@@ -106,16 +170,25 @@ func (r *Response) closeDataConn() {
 	r.conn.data.Close()
 }
 
-func (r *Response) connectDataConn() error {
-	dataConn := r.getDataConn()
-	if dataConn == nil {
-		return errors.New("init data conn failed")
+func resolvePassiveDataConn(dc *DataConn) (err error) {
+	if dc.ls == nil {
+		return errors.New("listener not spcify")
 	}
-	if len(dataConn.remoteAddr) == 0 {
+
+	dc.conn, err = dc.ls.AcceptTCP()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func resolveActiveDataConn(dc *DataConn) error {
+	if len(dc.remoteAddr) == 0 {
 		return errors.New("remote addr not specify")
 	}
 
-	fields := strings.Split(dataConn.remoteAddr, ",")
+	fields := strings.Split(dc.remoteAddr, ",")
 	if len(fields) != 6 {
 		return errors.New("invalid addr")
 	}
@@ -136,10 +209,35 @@ func (r *Response) connectDataConn() error {
 		return err
 	}
 
-	dataConn.conn, err = net.DialTCP("tcp", lAddr, rAddr)
+	dc.conn, err = net.DialTCP("tcp", lAddr, rAddr)
 	if err != nil {
 		if err == syscall.EADDRINUSE {
-			dataConn.conn, err = net.DialTCP("tcp", nil, rAddr)
+			dc.conn, err = net.DialTCP("tcp", nil, rAddr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (r *Response) connectDataConn() error {
+	dataConn := r.getDataConn()
+	if dataConn == nil {
+		return errors.New("init data conn failed")
+	}
+
+	switch dataConn.mode {
+	case "ACTIVE":
+		err := resolveActiveDataConn(dataConn)
+		if err != nil {
+			return err
+		}
+	case "PASSIVE":
+		err := resolvePassiveDataConn(dataConn)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -178,13 +276,15 @@ func (r *Response) Write(buf []byte) (int, error) {
 }
 
 type Conn struct {
-	remoteAddr string
-	user       *User
-	server     *Server
-	control    *net.TCPConn
-	reader     *bufio.Reader
-	writer     *bufio.Writer
-	data       *DataConn
+	remoteAddr  string
+	transMode   string
+	reqFileList []string
+	user        *User
+	server      *Server
+	control     *net.TCPConn
+	reader      *bufio.Reader
+	writer      *bufio.Writer
+	data        *DataConn
 }
 
 func (c *Conn) readRequest() (resp *Response, err error) {
@@ -238,6 +338,9 @@ func (c *Conn) Serve() {
 	for {
 		resp, err := c.readRequest()
 		if err != nil {
+			if err.(net.Error).Timeout() {
+				c.WriteResponseMessage(StatusServiceShutDown, "Timeout.")
+			}
 			msg := "bad reuqest"
 			if err == errInvalidRequest {
 				msg = "500 bad Request"
@@ -255,7 +358,7 @@ func (c *Conn) Serve() {
 
 		handler.ServeFTP(resp, resp.req)
 		resp.finishRequest()
-		if resp.closerAfterReply {
+		if resp.closeAfterReply {
 			break
 		}
 	}
@@ -353,18 +456,6 @@ type ServeCmd struct {
 func NewServeCmd() *ServeCmd {
 	return &ServeCmd{cmdEntrys: make(map[string]Handler)}
 }
-
-// stay here
-/*
-func NewDefaultServeCmd(entrys map[string]func(*Response, *Request)) *ServeCmd {
-	serveCmd := &ServeCmd{cmdEntrys: make(map[string]Handler)}
-	for k, v := range entrys {
-		serveCmd.HandleFunc(k, v)
-	}
-
-	return serveCmd
-}
-*/
 
 var DefaultServeCmd = NewServeCmd()
 
