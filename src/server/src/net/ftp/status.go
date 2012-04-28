@@ -13,6 +13,7 @@ const (
 	StatusAskPasswd        = 331
 	StatusReqestFileAction = 350
 	StatusServiceShutDown  = 421
+	StatusTransferAborted  = 426
 	StatusSyntaxErr        = 500
 	StatusLoginFailed      = 530
 )

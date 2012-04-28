@@ -106,11 +106,19 @@ func (r *Response) WriteData(buf []byte) (int, error) {
 	return n, err
 }
 
-func (r *Response) serveFile(content io.ReadSeeker, size int64) {
+func (r *Response) serveFile(content io.ReadSeeker, size int64, done chan int) {
 	switch r.getTransferMode() {
 	case "BINARY":
-		io.CopyN(r.conn.data.writer, content, size)
-		r.conn.data.writer.Flush()
+		written, err := io.CopyN(r.conn.data.writer, content, size)
+		if err != nil {
+			//
+		}
+		println(written)
+		if written != size {
+			done <- 1
+			return
+		}
+		done <- 0
 	case "ASCII":
 		reader := bufio.NewReader(content)
 		for {

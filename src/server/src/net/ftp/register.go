@@ -9,7 +9,7 @@ func init() {
 	HandleFunc("PORT", Port)
 	HandleFunc("CWD", ChangeDir)
 	HandleFunc("CDUP", ChangeToUpDir)
-	HandleFunc("ABORT", Abort)
+	HandleFunc("ABOR", Abort)
 	HandleFunc("PASV", Passive)
 	HandleFunc("PWD", CurrentWorkDir)
 	HandleFunc("MKD", Mkdir)

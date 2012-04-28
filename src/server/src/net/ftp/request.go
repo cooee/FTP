@@ -27,6 +27,25 @@ func ReadRequest(b *bufio.Reader) (req *Request, err error) {
 		return nil, err
 	}
 
+	index := 0
+	stringReader := strings.NewReader(s)
+	for {
+		c, err := stringReader.ReadByte()
+		if err != nil {
+			return nil, err
+		}
+		switch c {
+		case 0377, 0364, 0362:
+			index++
+			continue
+		default:
+			stringReader.UnreadByte()
+			s = s[index:]
+			goto BREAK
+		}
+	}
+
+BREAK:
 	defer func() {
 		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
