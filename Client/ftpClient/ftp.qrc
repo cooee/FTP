@@ -12,5 +12,6 @@
         <file>images/star.png</file>
         <file>images/folder.png</file>
         <file>images/web.png</file>
+        <file>images/file.png</file>
     </qresource>
 </RCC>

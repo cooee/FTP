@@ -249,7 +249,7 @@ void MainWindow::addToFileList(const QUrlInfo &urlInfo)
     item->setText(3, urlInfo.group());
     item->setText(4, urlInfo.lastModified().toString("MMM dd yyyy"));
 
-    QPixmap pixmap(urlInfo.isDir() ? ":/images/folder.png" : ":/images/star.png");
+    QPixmap pixmap(urlInfo.isDir() ? ":/images/folder.png" : ":/images/file.png");
     item->setIcon(0, pixmap);
 
     mIsDirectory[urlInfo.name()] = urlInfo.isDir();
@@ -304,6 +304,7 @@ void MainWindow::on_mQuickConnection_clicked()
 
     ui->mWebFileList->clear();
     this->mCurrentPath = "";
+    this->saveConfig();
 }
 
 
