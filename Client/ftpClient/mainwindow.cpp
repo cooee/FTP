@@ -208,7 +208,7 @@ void MainWindow::ftpCommandFinished(int commandId, bool error)
             return;
         }
 
-        mLogStr += "connect " + ui->mHost->text() + "sccuess \n";
+        mLogStr += "connect " + ui->mHost->text() + "success \n";
         ui->mLog->setText(mLogStr);
         if (ui->mUser->text() == "" && ui->mPassword->text() == "")
             mFtp->login();
@@ -243,6 +243,19 @@ void MainWindow::ftpCommandFinished(int commandId, bool error)
         ui->mDownload->setEnabled(true);
         mFtp->cd("/");
         mFtp->list();
+    }
+
+    if (mFtp->currentCommand() == QFtp::Put)
+    {
+         if ( error != 0)
+         {
+             mLogStr += this->mLocalPath + "  upload failed\n";
+         }
+         else
+         {
+             mLogStr += this->mLocalPath + "  upload success\n";
+         }
+         ui->mLog->setText(mLogStr);
     }
 }
 
@@ -488,7 +501,10 @@ void MainWindow::localItemChange(QModelIndex item)
 {
     QModelIndex index = ui->mLocalFileList->currentIndex();
     mLocalPath = mModel->filePath(index);
-    QString mFileName = ui->mWebFileList->currentItem()->text(0);
+    if (!this->mFtp)
+        return;
+
+     QString mFileName = ui->mWebFileList->currentItem()->text(0);
     //cout << mFileName.toStdString() << endl;
 
     ui->mUpload->setEnabled(false);
@@ -658,6 +674,9 @@ void MainWindow::on_mUpload_clicked()
       delete file;
       return;
   }
+
+  mLogStr += mLocalPath + "  upload to  " + mCurrentPath + ui->mWebFileList->currentItem()->text(0) + " \n";
+  ui->mLog->setText(mLogStr);
 
   mFtp->put(file, serverFileName);
 }
