@@ -53,6 +53,7 @@ private slots:
 
      void receiveData(char*p,int len);
      void operateFile(QTreeWidgetItem*,int);
+     void localItemChange(QModelIndex);
 
      void onSiteManagerClicked();
 
@@ -72,6 +73,8 @@ private slots:
      void on_mstart_clicked();
 
      void on_mPause_clicked();
+
+     void on_mUpload_clicked();
 
 signals:
     void sendSaveFile();

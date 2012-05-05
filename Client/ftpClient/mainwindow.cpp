@@ -16,11 +16,16 @@ MainWindow::MainWindow(QWidget *parent) :
     mSelectTask = 0;
     mLogList.clear();
     mLogStr = "";
-	mLocalPath = "/tmp";
+    mLocalPath = "/tmp";
+    mFtp = NULL;
 
     connect(ui->mDetailed, SIGNAL(itemClicked(QTreeWidgetItem *, int)),
                 this, SLOT(operateFile(QTreeWidgetItem*,int)));
-	connect(ui->mLocalFileList, SIGNAL(doubleClicked(QModelIndex)),
+
+    connect(ui->mLocalFileList, SIGNAL(clicked(QModelIndex)),
+                this, SLOT(localItemChange(QModelIndex)));
+
+    connect(ui->mLocalFileList, SIGNAL(doubleClicked(QModelIndex)),
                 this, SLOT(cdLocalDir(QModelIndex)));
 
    /* connect(ui->mLocalFileList, SIGNAL(itemClicked(QTreeWidgetItem *, int)),
@@ -127,7 +132,8 @@ ui->mUpDir->setEnabled(false);
     ui->mUser->setText("anonymous");
     ui->mPassword->setText("123");
     loadConfig();
-    mCurrentPath.clear();
+    mCurrentPath = "/";
+    //mCurrentPath.clear();
 
 }
 
@@ -303,7 +309,8 @@ void MainWindow::on_mQuickConnection_clicked()
     mFtp->connectToHost(ui->mHost->text(), ui->mPort->text().toInt());
 
     ui->mWebFileList->clear();
-    this->mCurrentPath = "";
+    //this->mCurrentPath = "";
+    this->mCurrentPath = "/";
     this->saveConfig();
 }
 
@@ -477,6 +484,20 @@ void MainWindow::operateFile(QTreeWidgetItem *item, int column)
     }
 }
 
+void MainWindow::localItemChange(QModelIndex item)
+{
+    QModelIndex index = ui->mLocalFileList->currentIndex();
+    mLocalPath = mModel->filePath(index);
+    QString mFileName = ui->mWebFileList->currentItem()->text(0);
+    //cout << mFileName.toStdString() << endl;
+
+    ui->mUpload->setEnabled(false);
+    if (QFileInfo(mLocalPath).isFile() && mFtp != NULL && this->mIsDirectory.value(mFileName))
+    {
+        ui->mUpload->setEnabled(true);
+    }
+}
+
 void MainWindow::saveConfig()
 {
     QFile tarFile("config.xml");
@@ -617,3 +638,26 @@ void MainWindow::closeEvent(QCloseEvent *event)
     cout << "save temfile" << endl;
 }
 
+
+void MainWindow::on_mUpload_clicked()
+{
+  //cout << mLocalPath.toStdString() << endl;
+
+  QFile *file = new QFile( mLocalPath );
+  QByteArray mTmp = mLocalPath.toLatin1();
+  char *mCharHost = mTmp.data();
+  char *p = strrchr(mCharHost, '/');
+  QString fileName(p);
+  QString serverFileName = mCurrentPath + ui->mWebFileList->currentItem()->text(0) + fileName;
+  //cout << serverFileName.toStdString()<< endl;
+
+  if ( !file->open(QIODevice::ReadOnly) )
+  {
+      QMessageBox::critical( this, tr("Upload error"),
+      tr("Can't open file '%1' for reading.").arg(mLocalPath) );
+      delete file;
+      return;
+  }
+
+  mFtp->put(file, serverFileName);
+}
