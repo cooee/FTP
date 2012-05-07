@@ -8,17 +8,20 @@ TARGET = ftpClient
 TEMPLATE = app
 SOURCES += main.cpp \
     mainwindow.cpp \
-    view.cpp \
     dialog.cpp \
     ftp.cpp \
-    ftpdownload.cpp
+    ftpdownload.cpp \
+    setting.cpp \
+    gloabdata.cpp
 HEADERS += mainwindow.h \
-    view.h \
     dialog.h \
     ftp.h \
-    ftpdownload.h
+    ftpdownload.h \
+    setting.h \
+    gloabdata.h
 FORMS += mainwindow.ui \
-    dialog.ui
+    dialog.ui \
+    setting.ui
 RESOURCES += ftp.qrc
 OTHER_FILES += images/star.png \
     images/question.png \

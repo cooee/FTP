@@ -16,6 +16,7 @@
 #include "ftpdownload.h"
 #include "QXmlStreamWriter"
 #include "QDebug"
+#include "setting.h"
 using namespace std;
 
 #define TASK_MAX 20

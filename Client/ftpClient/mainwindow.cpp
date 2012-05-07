@@ -2,9 +2,8 @@
 #include "ui_mainwindow.h"
 #include "QFileDialog"
 #include "QSplitter"
-#include "view.h"
 #include "QFileSystemModel"
-
+#include "setting.h"
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -557,7 +556,6 @@ void MainWindow::loadConfig()
                     xmlreader.readNext();
                  if(xmlreader.name() == "host")
                  {
-//                       qDebug() << "name " << xmlreader.name() << "text " << xmlreader.readElementText();
                        ui->mHost->setText(xmlreader.readElementText());
                  } else if (xmlreader.name() == "user") {
 //                       qDebug() << "name " << xmlreader.name() << "text " << xmlreader.readElementText();
@@ -577,7 +575,9 @@ void MainWindow::loadConfig()
 
 void MainWindow::on_mSetting_clicked()
 {
-    saveConfig();
+//    saveConfig();
+      Setting *mSetting = new Setting;
+      mSetting->show();
 }
 
 void MainWindow::on_mstart_clicked()
@@ -618,6 +618,10 @@ void MainWindow::on_mPause_clicked()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    if(GloabData::mIsExit == true) {
+        QMessageBox::information(this, tr("FTP"),
+                                tr("is exit?"));
+    }
     /*QMessageBox msgBox;
 
     for (int i = 0; i < this->mTaskNum; i++)
