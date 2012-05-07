@@ -83,15 +83,15 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
 
     for (i = 0; i < THREADNUM ;i++)
     {
-        connect(mThread[i],SIGNAL(sendData(int,long long )),this,SLOT(receiveData(int,long long )));
-        connect(this,SIGNAL(sendSave()), mThread[i],SLOT(receiveSave()));
+        connect(mThread[i],SIGNAL(sendData(int,long long )),this,SLOT(receiveDataCallBack(int,long long )));
+        connect(this,SIGNAL(sendSave()), mThread[i],SLOT(doSaveFile()));
         mThread[i]->start();
     }
 
     this->mThreadNum = i;
 }
 
-void FtpDownload::receiveData(int pid,long long len)
+void FtpDownload::receiveDataCallBack(int pid,long long len)
 {
     this->mTreadhDowloadSize[pid] = len;
 
@@ -100,12 +100,12 @@ void FtpDownload::receiveData(int pid,long long len)
         this->mThreadTotalSize += this->mTreadhDowloadSize[i];
     }
     mProcess = 100 * mThreadTotalSize / this->mFileSize;
-    emit sendData(NULL, mProcess);
+    emit progressChang(mProcess);
     mThreadTotalSize = 0;
    // emit sendData(NULL,len);
 }
 
-void FtpDownload::receiveSave()
+void FtpDownload::doSaveFile()
 {
 
     int fd;
@@ -152,6 +152,7 @@ void FtpDownload::receiveSave()
 
 void FtpDownload::receiveFinish()
 {
+     cout << "FtpDownload save myc" << endl;
     this->mFinish++;
     if ( this->mFinish == THREADNUM)
     {

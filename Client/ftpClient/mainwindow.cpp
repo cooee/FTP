@@ -106,7 +106,7 @@ void MainWindow::initView()
 
     ui->mDetailed->setHeaderLabels(QStringList() << tr("任务") << tr("源文件") << tr("大小") << tr("日期") << tr("目标") << tr("进度"));
     ui->mDetailed->header()->setStretchLastSection(false);
-
+//    ui->mDetailed->header()->setResizeMode(QHeaderView::ResizeToContents );
     ui->mLog->setText(tr("这里是日志"));
     connect(ui->mSiteManager, SIGNAL(clicked()), this, SLOT(onSiteManagerClicked()));
 
@@ -413,7 +413,7 @@ void MainWindow::on_mDownload_clicked()
     this->mFileTask[this->mTaskNum] = mDowloadFtp;
     //this->mFileTask.push_back(mDowloadFtp);
 
-	connect(mFileTask[mTaskNum],SIGNAL(sendData(char*,int )),this,SLOT(receiveData(char*,int )));
+    connect(mFileTask[mTaskNum],SIGNAL(progressChang(int)),this,SLOT(onProgressChang(int)));
     connect(this,SIGNAL(sendSaveFile()),mFileTask[mTaskNum++],SLOT(receiveSave()));
     //connect(this,SIGNAL(sendSave()),mFileTask[mTaskNum++],SLOT(receiveSave()));
 
@@ -433,7 +433,7 @@ void MainWindow::on_mDownload_clicked()
 
 }
 
-void MainWindow::receiveData(char*p,int len)
+void MainWindow::onProgressChang(int progress)
 {
     int i = 0;
     QTreeWidgetItemIterator item(ui->mDetailed);
@@ -683,4 +683,11 @@ void MainWindow::on_mUpload_clicked()
   ui->mLog->setText(mLogStr);
 
   mFtp->put(file, serverFileName);
+}
+
+void MainWindow::on_mAbout_clicked()
+{
+      QMessageBox msgBox;
+      msgBox.setText(tr("作者：莫玉成，周均鹏"));
+      msgBox.exec();
 }

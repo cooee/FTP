@@ -33,12 +33,12 @@ private:
     FtpThread* mThread[MAX_THREAD];
 
 signals:
-    void sendData(char*p,int len);
+    void progressChang(int progress);
     void sendSave();
 
 private slots:
-    void receiveData(int pid,long long len);
-    void receiveSave();
+    void receiveDataCallBack(int pid,long long len);
+    void doSaveFile();
     void receiveFinish();
 };
 
