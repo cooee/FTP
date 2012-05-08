@@ -52,7 +52,8 @@ private slots:
      void cdToDirectory(QTreeWidgetItem *item, int column);
      void cdLocalDir(QModelIndex item);
 
-     void onProgressChang(int progress); //下载进度改变回调
+     void onProgressChang(int progress); //下载进度改变
+     void onStateChange(int state, void *object);
      void operateFile(QTreeWidgetItem*,int);
      void localItemChange(QModelIndex);
 

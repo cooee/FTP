@@ -414,7 +414,8 @@ void MainWindow::on_mDownload_clicked()
     //this->mFileTask.push_back(mDowloadFtp);
 
     connect(mFileTask[mTaskNum],SIGNAL(progressChang(int)),this,SLOT(onProgressChang(int)));
-    connect(this,SIGNAL(sendSaveFile()),mFileTask[mTaskNum++],SLOT(receiveSave()));
+    connect(mFileTask[mTaskNum],SIGNAL(stateChange(int, void*)),this,SLOT(onStateChange(int, void *)));
+    connect(this,SIGNAL(sendSaveFile()),mFileTask[mTaskNum++],SLOT(doSaveFile()));
     //connect(this,SIGNAL(sendSave()),mFileTask[mTaskNum++],SLOT(receiveSave()));
 
     //this->mDowloadFtp = new Ftp(mCharHost, mCharUser,mCharPasswd,mCharFileName, long mSize);
@@ -431,6 +432,11 @@ void MainWindow::on_mDownload_clicked()
     item->setText(5, "0%");
     ui->mDetailed->addTopLevelItem(item);
 
+}
+
+void MainWindow::onStateChange(int state, void *object)
+{
+    cout << "Test  state :  " << state << endl;
 }
 
 void MainWindow::onProgressChang(int progress)

@@ -4,6 +4,14 @@
 #define MAX_THREAD 10
 #define THREADNUM 2
 
+enum state{
+    WAIT,
+    PASUE,
+    RUNNING,
+    FAILED,
+    Downloaded
+};
+
 class FtpDownload: public QObject
 {
     Q_OBJECT
@@ -24,6 +32,7 @@ private:
     bool mDowloadFlag;
     int mFinish;
     bool mFinishFlag;
+    int mState;
     char mIp[BUF_LEN];
     long long mTreadhDowloadSize[BUF_LEN];
     long long mThreadTotalSize;
@@ -35,6 +44,7 @@ private:
 signals:
     void progressChang(int progress);
     void sendSave();
+    void stateChange(int state, void *object);
 
 private slots:
     void receiveDataCallBack(int pid,long long len);

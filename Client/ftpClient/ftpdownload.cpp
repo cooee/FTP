@@ -17,6 +17,7 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
     mFinish = 0;
     mFinishFlag = false;
     mThreadTotalSize = 0;
+    mState = WAIT;
 
     strncpy(mSrcFileName, mFile, strlen(mFile) + 1);
     strncpy(mDstFileName, mDowFilename, strlen(mDowFilename) + 1);
@@ -84,11 +85,15 @@ FtpDownload::FtpDownload(char *mHost, char *mUsername, char *mPwd, char *mCurPat
     for (i = 0; i < THREADNUM ;i++)
     {
         connect(mThread[i],SIGNAL(sendData(int,long long )),this,SLOT(receiveDataCallBack(int,long long )));
-        connect(this,SIGNAL(sendSave()), mThread[i],SLOT(doSaveFile()));
+        connect(mThread[i],SIGNAL(sendFinish()),this,SLOT(receiveFinish()));
+
+        //connect(this,SIGNAL(sendSave()), mThread[i],SLOT(doSaveFile()));
+        connect(this,SIGNAL(sendSave()), mThread[i],SLOT(receiveSave()));
         mThread[i]->start();
     }
 
     this->mThreadNum = i;
+    this->mState = RUNNING;
 }
 
 void FtpDownload::receiveDataCallBack(int pid,long long len)
@@ -125,6 +130,7 @@ void FtpDownload::doSaveFile()
         }
         for (int i = 0; i < THREADNUM; i++)
         {
+            //emit sendSave();
             write(fd, &(this->mThread[i]->mOffset), sizeof(long long));
              write(fd, &(this->mThread[i]->mAlreadyDowSize), sizeof(long long));
             write(fd, &(this->mThread[i]->mDownloadsize), sizeof(long long));
@@ -157,7 +163,11 @@ void FtpDownload::receiveFinish()
     if ( this->mFinish == THREADNUM)
     {
         this->mFinishFlag = true;
+        this->mState = Downloaded;
+        stateChange(mState, NULL);
+        cout << "Downloaded :  " << mState << endl;
     }
+
 }
 
 void FtpDownload::stop()
@@ -168,6 +178,8 @@ void FtpDownload::stop()
     {
         mThread[i]->stop();
     }
+    this->mState = PASUE;
+    stateChange(mState, NULL);
 }
 
 void FtpDownload::contin()
@@ -178,4 +190,6 @@ void FtpDownload::contin()
     {
         mThread[i]->contin();;
     }
+    this->mState = RUNNING;
+    stateChange(mState, NULL);
 }
