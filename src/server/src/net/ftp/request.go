@@ -12,16 +12,21 @@ var (
 	errInvalidRequest = errors.New("Ftp: invalid request")
 )
 
+// implement ftp request
 type Request struct {
 	remoteAddr string
-	cmd        string
-	arg        []string
+	// ftp command
+	cmd string
+	// commnad param
+	arg []string
 }
 
 func ReadRequest(b *bufio.Reader) (req *Request, err error) {
+	// read text protocol
 	tp := textproto.NewReader(b)
 	req = new(Request)
 
+	// read ftp request
 	s, err := tp.ReadLine()
 	if err != nil {
 		return nil, err
@@ -35,6 +40,7 @@ func ReadRequest(b *bufio.Reader) (req *Request, err error) {
 			return nil, err
 		}
 		switch c {
+		// deal with abort command
 		case 0377, 0364, 0362:
 			index++
 			continue
@@ -52,10 +58,13 @@ BREAK:
 		}
 	}()
 
+	// split command and param
 	params := strings.Split(s, " ")
 	if len(params) == 0 {
 		return nil, errInvalidRequest
 	}
+
+	// save command and param to request
 	req.cmd, req.arg = params[0], params[1:]
 
 	return req, nil

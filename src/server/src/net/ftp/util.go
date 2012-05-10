@@ -18,12 +18,14 @@ import (
 */
 import "C"
 
+// debug
 func PRINTLINE() {
 	r1, _, r3, _ := runtime.Caller(1)
 	f := runtime.FuncForPC(r1)
 	fmt.Println("DEBUG: func:", f.Name(), ",line:", r3)
 }
 
+// user c function to auth user
 func AuthPasswd(name string, passwd string) bool {
 	nameC := C.CString(name)
 	defer C.free(unsafe.Pointer(nameC))
@@ -31,10 +33,13 @@ func AuthPasswd(name string, passwd string) bool {
 	passwdC := C.CString(passwd)
 	defer C.free(unsafe.Pointer(passwdC))
 
+	// get password struct
 	pwd := C.getspnam(nameC)
 	if pwd == nil {
 		return false
 	}
+
+	// crypt passwd and compare 
 	crypted := C.crypt(passwdC, pwd.sp_pwdp)
 	rv := C.strcmp(crypted, pwd.sp_pwdp)
 	if rv != 0 {
@@ -44,6 +49,7 @@ func AuthPasswd(name string, passwd string) bool {
 	return true
 }
 
+// exec system command
 func cmd(name string, arg ...string) ([]byte, error) {
 	command := exec.Command(name, arg...)
 	output, err := command.Output()

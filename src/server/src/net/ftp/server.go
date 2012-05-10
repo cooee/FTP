@@ -17,6 +17,7 @@ import (
 )
 
 var (
+	// welcome message
 	welcome = "welcome..."
 )
 
@@ -25,11 +26,13 @@ var (
 )
 
 const (
+	// default time out
 	DEFAULTRTIMEOUT = 300 * time.Second
 	DEFAULTWTIMEOUT = 10 * time.Second
 )
 
 type Handler interface {
+	// server pi handler interface
 	ServeFTP(w *Response, r *Request)
 }
 
@@ -44,22 +47,26 @@ func Error(w *Response, error string, status int) {
 }
 
 func NotFound(w *Response, r *Request) {
-	Error(w, "command not support", StatusLoginFailed)
+	// not implement command handler
+	Error(w, "command not support", StatusCommandNotImpl)
 }
 
 func NotFoundHandler() Handler {
 	return HandlerFunc(NotFound)
 }
 
+// data connection
 type DataConn struct {
-	mode       string
-	remoteAddr string
-	ls         *net.TCPListener
-	conn       *net.TCPConn
-	reader     *bufio.Reader
-	writer     *bufio.Writer
+	mode       string           // transfer mode
+	remoteAddr string           // client address
+	ls         *net.TCPListener // data connection listener
+	conn       *net.TCPConn     // data connection
+	reader     *bufio.Reader    // read from data connection
+	writer     *bufio.Writer    // write to data connection
+	offset     int64            // download offset
 }
 
+// init data connection
 func NewDataConn(arg interface{}, mode string) *DataConn {
 	switch mode {
 	case "ACTIVE":
@@ -70,6 +77,7 @@ func NewDataConn(arg interface{}, mode string) *DataConn {
 	return nil
 }
 
+// close data connection
 func (d *DataConn) Close() {
 	if d.writer != nil {
 		d.writer.Flush()
@@ -81,13 +89,15 @@ func (d *DataConn) Close() {
 	}
 }
 
+// ftp response
 type Response struct {
-	closeAfterReply bool
-	written         int64
-	conn            *Conn
-	req             *Request
+	closeAfterReply bool     // when err occur close control connection
+	written         int64    // write count
+	conn            *Conn    // control connection
+	req             *Request // ftp request
 }
 
+// write data to control connection
 func (r *Response) WriteData(buf []byte) (int, error) {
 	bufLen := len(buf)
 	if bufLen == 0 {
@@ -106,20 +116,24 @@ func (r *Response) WriteData(buf []byte) (int, error) {
 	return n, err
 }
 
+// serve download
 func (r *Response) serveFile(content io.ReadSeeker, size int64, done chan int) {
+	// get transfer mode
 	switch r.getTransferMode() {
 	case "BINARY":
+		// serve file
 		written, err := io.CopyN(r.conn.data.writer, content, size)
 		if err != nil {
-			//
+			done <- 1
+			return
 		}
-		println(written)
 		if written != size {
 			done <- 1
 			return
 		}
 		done <- 0
 	case "ASCII":
+		// create a new reader to read data
 		reader := bufio.NewReader(content)
 		for {
 			line, prefix, err := reader.ReadLine()
@@ -127,7 +141,6 @@ func (r *Response) serveFile(content io.ReadSeeker, size int64, done chan int) {
 				if err == io.EOF {
 					break
 				}
-				// deal with err
 				break
 			}
 			_, err = r.WriteData(line)
@@ -139,23 +152,34 @@ func (r *Response) serveFile(content io.ReadSeeker, size int64, done chan int) {
 	}
 }
 
+// serve upload
 func (r *Response) receiveFile(content io.WriteSeeker) {
+	// get transfer mode
 	switch r.getTransferMode() {
 	case "BINARY":
+		// read from data connection and write to file
 		io.Copy(content, r.conn.data.reader)
 	case "ASCII":
 		for {
+			// read one line once
 			line, err := r.conn.data.reader.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
-				// deal with err
 				break
 			}
 			io.WriteString(content, strings.Replace(line, "\r", "", -1))
 		}
 	}
+}
+
+func (r *Response) setOffset(offset int64) {
+	r.conn.data.offset = offset
+}
+
+func (r *Response) getOffset() int64 {
+	return r.conn.data.offset
 }
 
 func (r *Response) setTransferMode(mode string) {
@@ -178,6 +202,7 @@ func (r *Response) closeDataConn() {
 	r.conn.data.Close()
 }
 
+// get passive mode data connection
 func resolvePassiveDataConn(dc *DataConn) (err error) {
 	if dc.ls == nil {
 		return errors.New("listener not spcify")
@@ -191,6 +216,7 @@ func resolvePassiveDataConn(dc *DataConn) (err error) {
 	return nil
 }
 
+// get active mode data connection
 func resolveActiveDataConn(dc *DataConn) error {
 	if len(dc.remoteAddr) == 0 {
 		return errors.New("remote addr not specify")
@@ -230,6 +256,7 @@ func resolveActiveDataConn(dc *DataConn) error {
 	return nil
 }
 
+// connect data connection
 func (r *Response) connectDataConn() error {
 	dataConn := r.getDataConn()
 	if dataConn == nil {
@@ -263,6 +290,7 @@ func (r *Response) WriteString(status int, messge string) {
 func (r *Response) finishRequest() {
 }
 
+// write data to control connection
 func (r *Response) Write(buf []byte) (int, error) {
 	bufLen := len(buf)
 	if bufLen == 0 {
@@ -287,14 +315,15 @@ type Conn struct {
 	remoteAddr  string
 	transMode   string
 	reqFileList []string
-	user        *User
-	server      *Server
-	control     *net.TCPConn
-	reader      *bufio.Reader
-	writer      *bufio.Writer
-	data        *DataConn
+	user        *User         // logined user
+	server      *Server       // server
+	control     *net.TCPConn  // contorl connection
+	reader      *bufio.Reader // read data from control connection
+	writer      *bufio.Writer // write data to control connection
+	data        *DataConn     // data connection
 }
 
+// read ftp request
 func (c *Conn) readRequest() (resp *Response, err error) {
 	req, err := ReadRequest(c.reader)
 	if err != nil {
@@ -323,6 +352,7 @@ func (c *Conn) close() {
 	}
 }
 
+// serve one ftp client
 func (c *Conn) Serve() {
 	defer func() {
 		err := recover()
@@ -346,8 +376,10 @@ func (c *Conn) Serve() {
 	for {
 		resp, err := c.readRequest()
 		if err != nil {
-			if err.(net.Error).Timeout() {
-				c.WriteResponseMessage(StatusServiceShutDown, "Timeout.")
+			if e, ok := err.(net.Error); ok {
+				if e.Timeout() {
+					c.WriteResponseMessage(StatusServiceShutDown, "Timeout.")
+				}
 			}
 			msg := "bad reuqest"
 			if err == errInvalidRequest {
@@ -373,6 +405,7 @@ func (c *Conn) Serve() {
 	c.close()
 }
 
+// write response
 func (c *Conn) WriteResponseMessage(status int, args ...interface{}) (int, error) {
 	format := fmt.Sprintf("%d %%s\r\n", status)
 	resp := fmt.Sprintf(format, args...)
@@ -381,6 +414,7 @@ func (c *Conn) WriteResponseMessage(status int, args ...interface{}) (int, error
 	return count, err
 }
 
+// ftp interface
 func ListenAndServe(rtimeout, wtimeout time.Duration, addr string) error {
 	lAddr, err := net.ResolveTCPAddr("tcp", addr)
 	if err != nil {
@@ -405,6 +439,7 @@ type Server struct {
 	WriteTimeout time.Duration
 }
 
+// start ftp server
 func (srv *Server) ListenAndServe() error {
 	lAddr := srv.LAddr
 	if lAddr == nil {
@@ -422,6 +457,7 @@ func (srv *Server) ListenAndServe() error {
 	return srv.Serve(l)
 }
 
+// serve ftp
 func (srv *Server) Serve(l *net.TCPListener) error {
 	defer l.Close()
 	for {
@@ -446,6 +482,7 @@ func (srv *Server) Serve(l *net.TCPListener) error {
 	return errors.New("never reach here")
 }
 
+// get control connection
 func (srv *Server) newConn(tcpConn *net.TCPConn) (conn *Conn, err error) {
 	conn = new(Conn)
 	conn.remoteAddr = tcpConn.RemoteAddr().String()
@@ -458,9 +495,10 @@ func (srv *Server) newConn(tcpConn *net.TCPConn) (conn *Conn, err error) {
 
 type ServeCmd struct {
 	mu        sync.RWMutex
-	cmdEntrys map[string]Handler
+	cmdEntrys map[string]Handler // command - handler
 }
 
+// serve command
 func NewServeCmd() *ServeCmd {
 	return &ServeCmd{cmdEntrys: make(map[string]Handler)}
 }
@@ -500,6 +538,7 @@ func (s *ServeCmd) HandleFunc(cmd string, handler func(w *Response, r *Request))
 	s.Handle(cmd, HandlerFunc(handler))
 }
 
+// register handler
 func HandleFunc(cmd string, handler func(w *Response, r *Request)) {
 	DefaultServeCmd.HandleFunc(cmd, handler)
 }

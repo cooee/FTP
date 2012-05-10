@@ -1,6 +1,7 @@
 package ftp
 
 func init() {
+	// register command handler
 	HandleFunc("USER", Login)
 	HandleFunc("PASS", Login)
 	HandleFunc("SYST", Syst)
@@ -20,4 +21,6 @@ func init() {
 	HandleFunc("TYPE", Type)
 	HandleFunc("RETR", ServeFile)
 	HandleFunc("STOR", ReceiveFile)
+	HandleFunc("NOOP", Noop)
+	HandleFunc("REST", Reset)
 }
