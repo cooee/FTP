@@ -51,6 +51,7 @@ private slots:
      void addToFileList(const QUrlInfo &urlInfo);
      void cdToDirectory(QTreeWidgetItem *item, int column);
      void cdLocalDir(QModelIndex item);
+     void cdToServerParent();
 
      void onProgressChang(int progress); //下载进度改变
      void onStateChange(int state, void *object);
@@ -79,6 +80,8 @@ private slots:
      void on_mUpload_clicked();
 
      void on_mAbout_clicked();
+
+     void on_mUpDir_clicked();
 
 signals:
     void sendSaveFile();

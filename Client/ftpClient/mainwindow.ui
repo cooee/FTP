@@ -451,6 +451,8 @@
            </widget>
           </item>
          </layout>
+         <zorder>mUpDir</zorder>
+         <zorder>mWebDir</zorder>
         </widget>
         <widget class="QTreeWidget" name="mWebFileList">
          <property name="geometry">

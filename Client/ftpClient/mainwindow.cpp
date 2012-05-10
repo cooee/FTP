@@ -111,7 +111,7 @@ void MainWindow::initView()
     connect(ui->mSiteManager, SIGNAL(clicked()), this, SLOT(onSiteManagerClicked()));
 
     createComboBox("/home");
-this->mLocalPath = "/home";
+    this->mLocalPath = "/home";
     mDialog = new Dialog;
 
     ui->mDownload->setEnabled(false);
@@ -241,6 +241,7 @@ void MainWindow::ftpCommandFinished(int commandId, bool error)
         ui->mLog->setText(mLogStr);
         ui->mDownload->setEnabled(true);
         mFtp->cd("/");
+        ui->mWebDir->setText("/");
         mFtp->list();
     }
 
@@ -289,12 +290,13 @@ void MainWindow::cdToDirectory(QTreeWidgetItem *item, int /*column*/)
         //ui->mWebFileList->clearFocus();
         mIsDirectory.clear();
         mCurrentPath += "/" + name;
-		this->mLogStr += "cd " + name + "\n";
+        this->mLogStr += "cd " + name + "\n";
         ui->mLog->setText(mLogStr);
 
         mFtp->cd(mCurrentPath);
         mFtp->list();
-
+        ui->mUpDir->setEnabled(true);
+        ui->mWebDir->setText(mCurrentPath);
         //cout << (mCurrentPath.toStdString()) << endl;
         return;
     }
@@ -305,6 +307,22 @@ void MainWindow::cdLocalDir(QModelIndex item)
     QModelIndex index = ui->mLocalFileList->currentIndex();
     QString path = mModel->filePath(index);
     cout << path.toStdString() << endl;
+}
+
+void MainWindow::cdToServerParent()
+{
+    ui->mWebFileList->clear();
+    this->mIsDirectory.clear();
+    this->mCurrentPath =  mCurrentPath.left(mCurrentPath.lastIndexOf('/'));
+    if (mCurrentPath.isEmpty()) {
+        ui->mUpDir->setEnabled(false);
+        this->mFtp->cd("/");
+        ui->mWebDir->setText("/");
+    } else {
+        mFtp->cd(mCurrentPath);
+        ui->mWebDir->setText(mCurrentPath);
+    }
+    mFtp->list();
 }
 
 void MainWindow::on_mQuickConnection_clicked()
@@ -321,8 +339,8 @@ void MainWindow::on_mQuickConnection_clicked()
     mFtp->connectToHost(ui->mHost->text(), ui->mPort->text().toInt());
 
     ui->mWebFileList->clear();
-    //this->mCurrentPath = "";
-    this->mCurrentPath = "/";
+    this->mCurrentPath = "";
+    //this->mCurrentPath = "/";
     this->saveConfig();
 }
 
@@ -696,4 +714,9 @@ void MainWindow::on_mAbout_clicked()
       QMessageBox msgBox;
       msgBox.setText(tr("作者：莫玉成，周均鹏"));
       msgBox.exec();
+}
+
+void MainWindow::on_mUpDir_clicked()
+{
+    this->cdToServerParent();
 }
