@@ -104,6 +104,7 @@ func TestCommand(t *testing.T) {
 	testEpsv(t, c)
 	testOpenDataConn(t, c)
 	testQuit(t, c)
+	// TODO: add all test
 }
 
 func testSyst(t *testing.T, c *ServerConn) {
