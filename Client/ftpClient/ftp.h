@@ -31,7 +31,6 @@ public:
     friend class FtpDownload;
     FtpThread();
     FtpThread(int pid, char *mHost, char *mUser, char *mCurPath, char *mPasswd, char *mFileName, char *mDowFileNmae);
-    //int connect_port(unsigned short port, const char *ip);
     unsigned short getDataPort();
     int getSize(int sockfd, const char *filename);
     int ftpLogin();

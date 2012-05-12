@@ -37,8 +37,6 @@ private:
     long long mTreadhDowloadSize[BUF_LEN];
     long long mThreadTotalSize;
     struct sockaddr_in mServerAddr;
-
-    //list<FtpThread* > mThread;
     FtpThread* mThread[MAX_THREAD];
 
 signals:

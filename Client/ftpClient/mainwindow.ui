@@ -261,6 +261,16 @@
        </widget>
       </item>
      </layout>
+     <zorder>mReconnect</zorder>
+     <zorder>mSiteManager</zorder>
+     <zorder>mDisconnect</zorder>
+     <zorder>mDownload</zorder>
+     <zorder>mUpload</zorder>
+     <zorder>mstart</zorder>
+     <zorder>mPause</zorder>
+     <zorder>mRefresh</zorder>
+     <zorder>mSetting</zorder>
+     <zorder>mAbout</zorder>
     </widget>
    </widget>
    <widget class="QGroupBox" name="mGroupBox">

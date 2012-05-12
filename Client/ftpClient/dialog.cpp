@@ -27,7 +27,6 @@ void Dialog::on_mDelete_clicked()
     {
         int row = ui->mListWidget->row(mItem);
         qDebug() << row;
-//        ui->mListWidget->removeItemWidget(mItem);
         ui->mListWidget->takeItem(row);
     }
 }

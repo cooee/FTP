@@ -11,10 +11,6 @@ static int connect_port(struct sockaddr_in server_addr)
                 return mSockFd;
         }
 
-        //server_addr.sin_family = AF_INET;
-        //server_addr.sin_port = htons(port);
-        //server_addr.sin_addr.s_addr = inet_addr(ip);
-
         ret = connect(mSockFd, (const struct sockaddr *)&server_addr, sizeof(server_addr));
         if (ret == -1)
         {
@@ -33,10 +29,6 @@ FtpThread::FtpThread()
 
 FtpThread::FtpThread(int pid, char *mHost, char *mUsername, char *mPwd, char *mCurPath, char *mFile, char *mDowFileName)
 {
-    /*printf("%s\n", mHost);
-    printf("%s\n", mUsername);
-    printf("%s\n", mPwd);
-    printf("%s\n\n", mFile);*/
 
     mAlive = true;
     mFinish = false;
@@ -53,33 +45,6 @@ FtpThread::FtpThread(int pid, char *mHost, char *mUsername, char *mPwd, char *mC
     cout << "mPasswd   " << mPasswd << endl;
     cout << "mFileName " << mFileName << endl;
 }
-/*
-int FtpThread::connect_port(unsigned short port, const char *ip)
-{
-	int mSockFd, ret;
-	struct sockaddr_in server_addr;
-
-	mSockFd = socket(AF_INET, SOCK_STREAM, 0);
-	if (mSockFd == -1)
-        {
-		return mSockFd;
-	}
-
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(port);
-	server_addr.sin_addr.s_addr = inet_addr(ip);
-
-	ret = connect(mSockFd, (const struct sockaddr *)&server_addr, sizeof(server_addr));
-	if (ret == -1)
-	{
-		perror("connect()");
-		close(mSockFd);
-
-		return ret;
-	}
-
-	return mSockFd;
-}*/
 
 int FtpThread::ftpSendCommand(const char *cmd, const char *arg)
 {
@@ -116,7 +81,6 @@ int FtpThread::ftpSendCommand(const char *cmd, const char *arg)
     }
 
     printf("%s\n", buf);
-    //printf("tid = %lu, %s\n", pthread_self(), buf);
 
     return ret;
 }
@@ -130,7 +94,6 @@ int FtpThread::getSize(int mSockFd, const char *filename)
 
     sprintf(buf, "SIZE %s\r\n", filename);
 
-    // ret = ftpSendCommand(mSockFd, "SIZE", filename);
     ret = send(mSockFd, buf, strlen(buf), 0);
     if (ret < 0)
     {
@@ -252,19 +215,13 @@ void FtpThread::run()
     mDataPort = getDataPort();
 
     mServerAddr.sin_port = htons(mDataPort);
-    //cout << mDataPort << endl;
     mDataFd = connect_port(mServerAddr);
 
     sprintf(buf, "%d", mOffset);
     sprintf(fileNamePath, "%s/%s", this->mCurrentPath, this->mFileName);
     ret = ftpSendCommand("REST", buf);
-    //ret = ftpSendCommand("RETR", mFileName);
-    //ret = ftpSendCommand("RETR", "/srv/ftp/test");
     ret = ftpSendCommand("RETR", fileNamePath);
 
-    //cout << "aaaaaaa" << FileNamePath << endl;
-    // pthread_mutex_lock(&mFattr[i].lock);
-    //sprintf(dowFileName, "/tmp/%s", mFileName);
     mFileFd = open(this->mDownFileName, O_CREAT | O_RDWR, 0666);
     lseek(mFileFd, mOffset, SEEK_SET);
 
@@ -294,21 +251,17 @@ void FtpThread::run()
             mOffset += ret;
             mDownloadsize -= ret;
             mCurrSize += ret;
-            //mAlreadyDowSize += curr_size;
-            //emit sendData(mPid,mOffset);
+
             emit sendData(mPid,mCurrSize + mAlreadyDowSize);
-            // printf("==current size = %lu size = %lu, %d%%\r==", curr_size, size, 100 * (curr_size * 1.0 / size));
-            //printf("%d%%\t\r", 100 * curr_size  / size);
+
         }
     }
     close(mFileFd);
-    // pthread_mutex_unlock(&mFattr[i].lock);
 
     ret = recv(mSockFd, buf, BUF_LEN, 0);
     buf[ret] = '\0';
     cout << buf << endl;
 
-    // ftp_logout(mSockFd);
     close(mDataFd);
     close(mSockFd);
 
@@ -339,27 +292,4 @@ void FtpThread::receiveSave()
 {
 
     this->mAlreadyDowSize += this->mCurrSize;
-   /* int fd;
-    char buf[BUF_LEN];
-
-    if (!this->mFinish)
-    {
-        cout << "FtpThread save" << endl;
-
-        sprintf(buf, "%s.inf", this->mDownFileName);
-
-        fd = open(buf, O_CREAT | O_RDWR, 0666);
-
-        if (fd < 0)
-        {
-                perror("open()");
-               return ;
-        }
-        write(fd, &(this->mOffset), sizeof(int));
-        write(fd, &(this->mDownloadsize), sizeof(int));
-        cout << "save" << this->mOffset << endl;
-        cout << "save" << this->mDownloadsize << endl;
-
-        close(fd);
-    }*/
 }

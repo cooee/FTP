@@ -37,16 +37,7 @@ protected:
     void closeEvent(QCloseEvent *event);
 
 private slots:
-//     void newFile();
      void open();
-//     void save();
-//     void saveAs();
-//     void cut();
-//     void copy();
-//     void paste();
-//     void about();
-//     void updateMenus();
-//     void updateWindowMenu();
      void ftpCommandFinished(int commandId, bool error);
      void addToFileList(const QUrlInfo &urlInfo);
      void cdToDirectory(QTreeWidgetItem *item, int column);
@@ -83,6 +74,10 @@ private slots:
 
      void on_mUpDir_clicked();
 
+     void on_mDisconnect_clicked();
+
+     void on_mReconnect_clicked();
+
 signals:
     void sendSaveFile();
 
@@ -103,7 +98,6 @@ private:
     QString mCurrentPath;
     QString mLocalPath;
     QHash<QString, bool> mIsDirectory;
-    //list<FtpDownload > mFileTask;
     FtpDownload* mFileTask[TASK_MAX];
     int mSelectTask;
     list<QString> mLogList;
